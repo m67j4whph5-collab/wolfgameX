@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>オンライン人狼</title>
+
+<link rel="manifest" href="manifest.json">
+
+<style>
+body{
+  background:#111;
+  color:white;
+  font-family:sans-serif;
+}
+button{
+  padding:10px;
+  margin:5px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>オンライン人狼</h1>
+
+<input id="roomId" placeholder="ルーム">
+<button onclick="createRoom()">作成</button>
+<button onclick="joinRoom()">参加</button>
+
+<h2 id="role"></h2>
+
+<h3>プレイヤー</h3>
+<div id="players"></div>
+
+<div id="chat"></div>
+
+<input id="msg">
+<button onclick="send()">送信</button>
+
+<script type="module">
+/* ここに今のJSを全部コピペ */
+</script>
+
+</body>
+</html>
