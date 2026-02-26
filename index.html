@@ -1,79 +1,82 @@
 <!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>オンライン人狼</title>
-
-  <!DOCTYPE html>
 <html lang="ja">
 <head>
-  
-    <meta charset="UTF-8">
-    <title>人狼ゲーム</title>
-    
-<style>
-  body {
-    font-size: 16px;       /* 文字を大きくして読みやすく */
-    text-align: center;    /* 左寄せを中央揃えに */
-  }
+  <meta charset="UTF-8">
+  <title>オンライン人狼</title>
 
-  .wrapper {
-    max-width: 600px;      /* ゲーム画面の幅を制限 */
-    margin: 0 auto;        /* 左右中央に寄せる */
-  }
-</style>
-  
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- スマホ対応 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  
-  
-  
-    <link rel="apple-touch-icon" sizes="180x180"
-          href="https://github.com/m67j4whph5-collab/wolfgameX/blob/main/IMG_1346.png?raw=true">
+  <!-- ホーム画面アイコン -->
+  <link rel="apple-touch-icon" sizes="180x180"
+        href="https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/IMG_1346.png">
 
+  <!-- CSS -->
+  <style>
+    body {
+      background: #111;
+      color: white;
+      font-family: sans-serif;
+      font-size: 16px; /* 読みやすい文字サイズ */
+      margin: 0;
+      padding: 0;
+    }
+
+    .game-wrapper {
+      max-width: 600px;
+      margin: 0 auto;       /* 左右中央 */
+      text-align: center;   /* ゲーム内文字を中央 */
+      padding: 20px;
+    }
+
+    input, button {
+      font-size: 16px;      /* スマホでも押しやすい */
+      padding: 10px;
+      margin: 5px;
+    }
+
+    h1, h2, h3 {
+      margin: 10px 0;
+    }
+
+    #chat {
+      border: 1px solid #444;
+      height: 150px;
+      overflow-y: auto;
+      margin: 10px 0;
+      padding: 5px;
+      background: #222;
+    }
+  </style>
+
+  <link rel="manifest" href="manifest.json">
 </head>
 <body>
-    <!-- サイトの中身 -->
+
+  <div class="game-wrapper">
+    <h1>オンライン人狼</h1>
+
+    <input id="roomId" placeholder="ルーム">
+    <button onclick="createRoom()">作成</button>
+    <button onclick="joinRoom()">参加</button>
+
+    <h2 id="role"></h2>
+
+    <h3>プレイヤー</h3>
+    <div id="players"></div>
+
+    <div id="chat"></div>
+
+    <input id="msg" placeholder="メッセージ">
+    <button onclick="send()">送信</button>
+  </div>
+
+  <script type="module">
+    /* ここに今のJSを全部コピペ */
+  </script>
+
 </body>
 </html>
 
-<link rel="manifest" href="manifest.json">
-
-<style>
-body{
-  background:#111;
-  color:white;
-  font-family:sans-serif;
-}
-button{
-  padding:10px;
-  margin:5px;
-}
-</style>
-
-</head>
-
-<body>
-
-<h1>オンライン人狼</h1>
-
-<input id="roomId" placeholder="ルーム">
-<button onclick="createRoom()">作成</button>
-<button onclick="joinRoom()">参加</button>
-
-<h2 id="role"></h2>
-
-<h3>プレイヤー</h3>
-<div id="players"></div>
-
-<div id="chat"></div>
-
-<input id="msg">
-<button onclick="send()">送信</button>
-
-<script type="module">
-/* ここに今のJSを全部コピペ */
-</script>
-
-</body>
-</html>
+   
+  
