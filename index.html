@@ -95,8 +95,8 @@ button:hover{background:#666;}
   <div id="players"></div>
 
   <div>
-    <button class="tabBtn active" onclick="showTab('chat')">チャット</button>
-    <button class="tabBtn" onclick="showTab('myLog')">自分ログ</button>
+    <button class="tabBtn active" onclick="showTab('chat',event)">チャット</button>
+    <button class="tabBtn" onclick="showTab('myLog',event)">自分ログ</button>
   </div>
 
   <div id="chat"></div>
@@ -132,7 +132,7 @@ const roles=["村人","人狼","占い師","霊能者","狂人","狩人"];
 let players=[], turn="昼";
 
 function toggleBGM(){const bgm=document.getElementById("bgm"); bgm.paused?bgm.play():bgm.pause();}
-function showTab(tab){
+function showTab(tab,event){
   document.getElementById('chat').style.display=(tab==='chat')?'block':'none';
   document.getElementById('myLog').style.display=(tab==='myLog')?'block':'none';
   document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active'));
@@ -142,15 +142,23 @@ function showTab(tab){
 function startGame(){
   roomId=document.getElementById("roomId").value.trim();
   playerName=document.getElementById("playerName").value.trim();
-  if(!roomId||!playerName){alert("ルームIDと名前を入力");return;}
-  document.getElementById("lobbyScreen").style.display="none";
-  document.getElementById("gameScreen").style.display="block";
-  document.getElementById("currentRoom").textContent=roomId;
+  if(!roomId || !playerName){ alert("ルームIDと名前を入力"); return; }
 
-  role=roles[Math.floor(Math.random()*roles.length)];
-  document.getElementById("role").textContent=`役職: ${role}`;
-  db.ref('rooms/'+roomId+'/players/'+playerName).set({role:role,alive:true,vote:null});
+  const playerRef = db.ref('rooms/' + roomId + '/players/' + playerName);
+  playerRef.get().then(snapshot=>{
+    if(snapshot.exists()){ alert("同じ名前のプレイヤーがすでに存在します"); return; }
+    role = roles[Math.floor(Math.random()*roles.length)];
+    playerRef.set({role:role,alive:true,vote:null}).then(()=>{
+      document.getElementById("lobbyScreen").style.display="none";
+      document.getElementById("gameScreen").style.display="block";
+      document.getElementById("currentRoom").textContent=roomId;
+      document.getElementById("role").textContent=`役職: ${role}`;
+      setupRoomListeners();
+    }).catch(err=>alert("ルーム作成失敗: "+err));
+  });
+}
 
+function setupRoomListeners(){
   db.ref('rooms/'+roomId+'/players').on('value',snap=>{
     const data=snap.val()||{};
     players=Object.keys(data);
@@ -199,7 +207,7 @@ function showNightActions(){
 function addNightBtns(roleType){
   const nightDiv=document.getElementById('nightActions');
   players.forEach(p=>{
-  const btn=document.createElement('button');
+    const btn=document.createElement('button');
     btn.textContent=p;
     btn.className='nightBtn';
     btn.onclick=()=>db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:roleType,target:p})&&alert(roleType+"行動を"+p+"に登録");
