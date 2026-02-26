@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>オンライン人狼フル版アプリ</title>
+<title>オンライン人狼 幻想版</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -11,18 +11,20 @@ body{
   margin:0; padding:0;
   color:white;
   text-align:center;
-  background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)),
-              url('https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/forest_night.png') no-repeat center center fixed;
-  background-size: cover;
+  overflow-x:hidden;
+  background:#111;
 }
+
 .wrapper{
   max-width:600px;
   margin:10px auto;
   padding:10px;
   backdrop-filter: blur(5px);
-  background: rgba(0,0,0,0.3);
+  background: rgba(0,0,0,0.25);
   border-radius:10px;
+  position:relative;
 }
+
 input,button{
   padding:12px;
   margin:5px;
@@ -30,43 +32,47 @@ input,button{
   border-radius:8px;
   border:none;
 }
-#chat,#players,#votes,#nightActions,#myLog{
-  background: rgba(30,30,30,0.8);
+
+#logView,#chat,#players,#votes,#nightActions{
+  background: rgba(0,0,0,0.7);
   padding:10px;
-  margin:5px;
-  max-height:70vh;
+  margin:5px 0;
+  max-height:65vh;
   overflow:auto;
   border-radius:6px;
+  font-size:16px;
 }
-#chat, #myLog{font-size:16px;}
-h1,h2,h3{margin:5px;}
+
 button{
   cursor:pointer;
   background:#444;
   color:white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  box-shadow:0 2px 4px rgba(0,0,0,0.5);
 }
 button:hover{background:#666;}
+
+#tabs button{margin:2px;}
+.tabBtn.active{background:#555;}
+
 #victoryAnim{
-  position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;display:none;
+  position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none;
 }
 .victoryText{
-  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  font-size:32px;font-weight:bold;text-shadow:0 0 20px #fff;
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  font-size:32px; font-weight:bold; text-shadow:0 0 20px #fff;
 }
-.tabBtn{padding:8px;margin:2px;font-size:14px;background:#333;color:white;border-radius:6px;}
-.tabBtn.active{background:#555;}
-.nightBtn{background:#880000;margin:3px;width:100px;}
-.voteBtn{background:#008800;margin:3px;width:100px;}
+
+/* 背景霧アニメーション */
+#fogCanvas{
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  z-index:-1;
+  pointer-events:none;
+}
 </style>
 
-<link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" sizes="180x180"
-      href="https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/IMG_1346.png">
-<link rel="apple-touch-icon" sizes="180x180"
-      href="https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/IMG_1346.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/IMG_1346.png">
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -74,14 +80,15 @@ button:hover{background:#666;}
 <body>
 
 <audio id="bgm" src="https://www.chosic.com/wp-content/uploads/2021/10/Halloween-Horror-Creepy-Piano.mp3" loop autoplay></audio>
-<audio id="soundAttack" src="https://freesound.org/data/previews/256/256113_3263906-lq.mp3"></audio>
 <audio id="soundVote" src="https://freesound.org/data/previews/170/170064_2437352-lq.mp3"></audio>
 <audio id="soundVictory" src="https://freesound.org/data/previews/331/331912_3248244-lq.mp3"></audio>
 
+<canvas id="fogCanvas"></canvas>
+
 <div class="wrapper" id="lobbyScreen">
-  <h1>オンライン人狼フル版</h1>
+  <h1>オンライン人狼 幻想版</h1>
   <input id="roomId" placeholder="ルームID">
-  <input id="playerName" placeholder="プレイヤー名">
+  <input id="playerName" placeholder="名前">
   <button onclick="startGame()">ルーム作成/参加</button>
   <button onclick="toggleBGM()">BGM ON/OFF</button>
 </div>
@@ -94,15 +101,10 @@ button:hover{background:#666;}
   <h3>プレイヤー一覧</h3>
   <div id="players"></div>
 
-  <div>
-    <button class="tabBtn active" onclick="showTab('chat',event)">チャット</button>
-    <button class="tabBtn" onclick="showTab('myLog',event)">自分ログ</button>
-  </div>
+  <div id="tabs"></div>
+  <div id="logView"></div>
 
-  <div id="chat"></div>
-  <div id="myLog" style="display:none;"></div>
-
-  <input id="msg" placeholder="みんなで盛り上がろう！">
+  <input id="msg" placeholder="盛り上がろう！">
   <button onclick="sendMessage()">送信</button>
 
   <h3>投票</h3>
@@ -115,6 +117,7 @@ button:hover{background:#666;}
 <div id="victoryAnim"><div class="victoryText" id="victoryText"></div></div>
 
 <script>
+// Firebase設定
 const firebaseConfig = {
   apiKey: "AIzaSyArrBmwJJdku58WdeAnQ3PeyiL2U2FweJ8",
   authDomain: "online-wolfgame.firebaseapp.com",
@@ -129,136 +132,121 @@ const db = firebase.database();
 
 let roomId='', playerName='', role='';
 const roles=["村人","人狼","占い師","霊能者","狂人","狩人"];
-let players=[], turn="昼";
+let players=[];
+
+let logs = {};
 
 function toggleBGM(){const bgm=document.getElementById("bgm"); bgm.paused?bgm.play():bgm.pause();}
-function showTab(tab,event){
-  document.getElementById('chat').style.display=(tab==='chat')?'block':'none';
-  document.getElementById('myLog').style.display=(tab==='myLog')?'block':'none';
-  document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active'));
-  event.target.classList.add('active');
-}
 
 function startGame(){
   roomId=document.getElementById("roomId").value.trim();
   playerName=document.getElementById("playerName").value.trim();
-  if(!roomId || !playerName){ alert("ルームIDと名前を入力"); return; }
-
-  const playerRef = db.ref('rooms/' + roomId + '/players/' + playerName);
-  playerRef.get().then(snapshot=>{
-    if(snapshot.exists()){ alert("同じ名前のプレイヤーがすでに存在します"); return; }
+  if(!roomId||!playerName){alert("ルームIDと名前を入力");return;}
+  const playerRef=db.ref('rooms/'+roomId+'/players/'+playerName);
+  playerRef.get().then(snap=>{
+    if(snap.exists()){alert("同じ名前が存在");return;}
     role = roles[Math.floor(Math.random()*roles.length)];
     playerRef.set({role:role,alive:true,vote:null}).then(()=>{
       document.getElementById("lobbyScreen").style.display="none";
       document.getElementById("gameScreen").style.display="block";
-      document.getElementById("currentRoom").textContent=roomId;
-      document.getElementById("role").textContent=`役職: ${role}`;
-      setupRoomListeners();
-    }).catch(err=>alert("ルーム作成失敗: "+err));
+      document.getElementById("currentRoom").textContent = roomId;
+      document.getElementById("role").textContent = `役職: ${role}`;
+      setupListeners();
+    });
   });
 }
 
-function setupRoomListeners(){
+function setupListeners(){
   db.ref('rooms/'+roomId+'/players').on('value',snap=>{
-    const data=snap.val()||{};
-    players=Object.keys(data);
-    document.getElementById('players').innerHTML=players.map(p=>{
-      const alive=data[p].alive?"🟢生存":"🔴死亡";
-      return `<p>${p} (${data[p].role}) ${alive}</p>`;
-    }).join('');
+    const data = snap.val()||{};
+    players = Object.keys(data);
+    document.getElementById('players').innerHTML=players.map(p=>{return `<p>${p} (${data[p].role}) ${data[p].alive?"🟢":"🔴"}</p>`}).join('');
+    setupTabs();
     showNightActions();
     showVoteButtons();
-    checkVictory(data);
   });
 
   db.ref('rooms/'+roomId+'/chat').on('child_added',snap=>{
     const msg=snap.val();
-    const chatDiv=document.getElementById('chat');
-    chatDiv.innerHTML+=`<p><b>${msg.player}:</b> ${msg.msg}</p>`;
-    chatDiv.scrollTop=chatDiv.scrollHeight;
-    document.getElementById("soundVote").play();
-    db.ref('rooms/'+roomId+'/logs/'+playerName).push(msg.player + ": " + msg.msg);
+    addLog('チャット', `<b>${msg.player}:</b> ${msg.msg}`);
   });
 
-  db.ref('rooms/'+roomId+'/logs/'+playerName).on('child_added',snap=>{
-    const myLogDiv=document.getElementById('myLog');
-    myLogDiv.innerHTML+=`<p>${snap.val()}</p>`;
-    myLogDiv.scrollTop=myLogDiv.scrollHeight;
+  players.forEach(p=>{
+    db.ref('rooms/'+roomId+'/logs/'+p).on('child_added',snap=>{
+      addLog(p,snap.val());
+    });
   });
 }
 
+function setupTabs(){
+  const tabsDiv=document.getElementById('tabs'); tabsDiv.innerHTML='';
+  const allTabs=['チャット','自分ログ',...players];
+  allTabs.forEach(tab=>{
+    const btn=document.createElement('button');
+    btn.className='tabBtn'; btn.textContent=tab;
+    btn.onclick=(e)=>{switchTab(tab,e);};
+    if(tab==='チャット') btn.classList.add('active');
+    tabsDiv.appendChild(btn);
+    if(!logs[tab]) logs[tab]=[];
+  });
+  showLog('チャット');
+}
+
+function addLog(tab,msg){if(!logs[tab]) logs[tab]=[]; logs[tab].push(msg); const active=document.querySelector('.tabBtn.active').textContent; if(active===tab) showLog(tab);}
+function switchTab(tab,e){document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active')); e.target.classList.add('active'); showLog(tab);}
+function showLog(tab){const div=document.getElementById('logView'); div.innerHTML=logs[tab].map(m=>`<p>${m}</p>`).join(''); div.scrollTop=div.scrollHeight;}
+
 function sendMessage(){
-  const msgInput=document.getElementById("msg");
-  const msg=msgInput.value.trim();
+  const msg=document.getElementById("msg").value.trim();
   if(!msg) return;
   db.ref('rooms/'+roomId+'/chat').push({player:playerName,msg:msg});
-  msgInput.value="";
+  db.ref('rooms/'+roomId+'/logs/'+playerName).push(`自分: ${msg}`);
+  document.getElementById("msg").value='';
 }
 
 function showNightActions(){
-  const nightDiv=document.getElementById('nightActions');
-  nightDiv.innerHTML='';
+  const nightDiv=document.getElementById('nightActions'); nightDiv.innerHTML='';
   if(!players.length) return;
-  if(role==="人狼"){ addNightBtns("人狼"); }
-  else if(role==="占い師"){ addNightBtns("占い師"); }
-  else if(role==="狩人"){ addNightBtns("狩人"); }
-}
-
-function addNightBtns(roleType){
-  const nightDiv=document.getElementById('nightActions');
-  players.forEach(p=>{
-    const btn=document.createElement('button');
-    btn.textContent=p;
-    btn.className='nightBtn';
-    btn.onclick=()=>db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:roleType,target:p})&&alert(roleType+"行動を"+p+"に登録");
-    nightDiv.appendChild(btn);
-  });
+  if(role==="人狼"||role==="占い師"||role==="狩人"){
+    players.forEach(p=>{
+      const btn=document.createElement('button'); btn.textContent=p; btn.className='nightBtn';
+      btn.onclick=()=>db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:role,target:p})&&alert(role+"行動:"+p);
+      nightDiv.appendChild(btn);
+    });
+  }
 }
 
 function showVoteButtons(){
-  const votesDiv=document.getElementById('votes');
-  votesDiv.innerHTML='';
+  const votesDiv=document.getElementById('votes'); votesDiv.innerHTML='';
   players.forEach(p=>{
     if(p===playerName) return;
-    const btn=document.createElement('button');
-    btn.textContent=p;
-    btn.className='voteBtn';
+    const btn=document.createElement('button'); btn.textContent=p; btn.className='voteBtn';
     btn.onclick=()=>db.ref('rooms/'+roomId+'/votes/'+playerName).set(p);
     votesDiv.appendChild(btn);
   });
 }
 
-function checkVictory(data){
-  const alive=Object.values(data).filter(p=>p.alive);
-  const wolves=alive.filter(p=>p.role==="人狼").length;
-  const villagers=alive.length-wolves;
-  if(wolves===0){showVictory("村人チームの勝利！🎉"); db.ref('rooms/'+roomId).remove();}
-  else if(villagers<=wolves){showVictory("人狼チームの勝利！🐺"); db.ref('rooms/'+roomId).remove();}
+// 背景霧アニメーション
+const canvas=document.getElementById('fogCanvas');
+const ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+let fogParticles=[];
+for(let i=0;i<50;i++){
+  fogParticles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:50+Math.random()*50,s:0.1+Math.random()*0.3});
 }
-
-function showVictory(msg){
-  const anim=document.getElementById("victoryAnim");
-  const text=document.getElementById("victoryText");
-  text.textContent=msg;
-  anim.style.display="block";
-  document.getElementById("soundVictory").play();
-  let i=0;
-  const interval=setInterval(()=>{
-    const dot=document.createElement("div");
-    dot.style.position="absolute";
-    dot.style.left=Math.random()*100+"%";
-    dot.style.top=Math.random()*100+"%";
-    dot.style.width="10px"; dot.style.height="10px";
-    dot.style.background="yellow";
-    dot.style.borderRadius="50%";
-    dot.style.boxShadow="0 0 15px #ff0";
-    document.body.appendChild(dot);
-    setTimeout(()=>{document.body.removeChild(dot)},1000);
-    i++; if(i>50) clearInterval(interval);
-  },100);
-  setTimeout(()=>{anim.style.display="none";},4000);
+function animateFog(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  fogParticles.forEach(p=>{
+    ctx.beginPath();
+    ctx.fillStyle='rgba(255,255,255,0.05)';
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fill();
+    p.x+=p.s;
+    if(p.x>canvas.width) p.x=0;
+  });
+  requestAnimationFrame(animateFog);
 }
+animateFog();
 </script>
-
 </body>
 </html>
