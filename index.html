@@ -199,3 +199,58 @@ function showNightActions(){
 function addNightBtns(roleType){
   const nightDiv=document.getElementById('nightActions');
   players.forEach(p=>{
+  const btn=document.createElement('button');
+    btn.textContent=p;
+    btn.className='nightBtn';
+    btn.onclick=()=>db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:roleType,target:p})&&alert(roleType+"行動を"+p+"に登録");
+    nightDiv.appendChild(btn);
+  });
+}
+
+function showVoteButtons(){
+  const votesDiv=document.getElementById('votes');
+  votesDiv.innerHTML='';
+  players.forEach(p=>{
+    if(p===playerName) return;
+    const btn=document.createElement('button');
+    btn.textContent=p;
+    btn.className='voteBtn';
+    btn.onclick=()=>db.ref('rooms/'+roomId+'/votes/'+playerName).set(p);
+    votesDiv.appendChild(btn);
+  });
+}
+
+function checkVictory(data){
+  const alive=Object.values(data).filter(p=>p.alive);
+  const wolves=alive.filter(p=>p.role==="人狼").length;
+  const villagers=alive.length-wolves;
+  if(wolves===0){showVictory("村人チームの勝利！🎉"); db.ref('rooms/'+roomId).remove();}
+  else if(villagers<=wolves){showVictory("人狼チームの勝利！🐺"); db.ref('rooms/'+roomId).remove();}
+}
+
+function showVictory(msg){
+  const anim=document.getElementById("victoryAnim");
+  const text=document.getElementById("victoryText");
+  text.textContent=msg;
+  anim.style.display="block";
+  document.getElementById("soundVictory").play();
+  let i=0;
+  const interval=setInterval(()=>{
+    const dot=document.createElement("div");
+    dot.style.position="absolute";
+    dot.style.left=Math.random()*100+"%";
+    dot.style.top=Math.random()*100+"%";
+    dot.style.width="10px"; dot.style.height="10px";
+    dot.style.background="yellow";
+    dot.style.borderRadius="50%";
+    dot.style.boxShadow="0 0 15px #ff0";
+    document.body.appendChild(dot);
+    setTimeout(()=>{document.body.removeChild(dot)},1000);
+    i++; if(i>50) clearInterval(interval);
+  },100);
+  setTimeout(()=>{anim.style.display="none";},4000);
+}
+</script>
+
+</body>
+</html>
