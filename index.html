@@ -9,67 +9,45 @@
 body{
   font-family:sans-serif;
   margin:0; padding:0;
+  background: linear-gradient(#0d1b2a, #1b263b); /* 夜の森の暗めグラデーション */
+  overflow-x:hidden;
   color:white;
   text-align:center;
-  overflow-x:hidden;
-  background:#111;
 }
-
 .wrapper{
   max-width:600px;
   margin:10px auto;
   padding:10px;
-  backdrop-filter: blur(5px);
   background: rgba(0,0,0,0.25);
+  backdrop-filter: blur(5px);
   border-radius:10px;
   position:relative;
 }
-
 input,button{
-  padding:12px;
-  margin:5px;
+  padding:10px;
+  margin:3px;
   font-size:16px;
   border-radius:8px;
   border:none;
 }
-
 #logView,#chat,#players,#votes,#nightActions{
   background: rgba(0,0,0,0.7);
   padding:10px;
-  margin:5px 0;
-  max-height:65vh;
+  margin:5px auto;
+  max-height:80vh;
   overflow:auto;
   border-radius:6px;
   font-size:16px;
+  width:95%;  /* 横幅固定 */
 }
-
-button{
-  cursor:pointer;
-  background:#444;
-  color:white;
-  box-shadow:0 2px 4px rgba(0,0,0,0.5);
-}
+button{cursor:pointer;background:#444;color:white;box-shadow:0 2px 4px rgba(0,0,0,0.5);}
 button:hover{background:#666;}
-
 #tabs button{margin:2px;}
 .tabBtn.active{background:#555;}
-
-#victoryAnim{
-  position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none;
-}
-.victoryText{
-  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-  font-size:32px; font-weight:bold; text-shadow:0 0 20px #fff;
-}
-
-/* 背景霧アニメーション */
-#fogCanvas{
-  position:fixed;
-  top:0; left:0;
-  width:100%; height:100%;
-  z-index:-1;
-  pointer-events:none;
-}
+#victoryAnim{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;display:none;}
+.victoryText{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:32px;font-weight:bold;text-shadow:0 0 20px #fff;}
+#fogCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;}
+#currentRoom,#role,#turn{font-size:12px;} /* 小さく表示 */
 </style>
 
 <link rel="icon" href="https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/IMG_1346.png">
@@ -80,8 +58,6 @@ button:hover{background:#666;}
 <body>
 
 <audio id="bgm" src="https://www.chosic.com/wp-content/uploads/2021/10/Halloween-Horror-Creepy-Piano.mp3" loop autoplay></audio>
-<audio id="soundVote" src="https://freesound.org/data/previews/170/170064_2437352-lq.mp3"></audio>
-<audio id="soundVictory" src="https://freesound.org/data/previews/331/331912_3248244-lq.mp3"></audio>
 
 <canvas id="fogCanvas"></canvas>
 
@@ -107,11 +83,8 @@ button:hover{background:#666;}
   <input id="msg" placeholder="盛り上がろう！">
   <button onclick="sendMessage()">送信</button>
 
-  <h3>投票</h3>
-  <div id="votes"></div>
-
-  <h3>夜行動</h3>
-  <div id="nightActions"></div>
+  <div id="votes" style="display:none;"></div>
+  <div id="nightActions" style="display:none;"></div>
 </div>
 
 <div id="victoryAnim"><div class="victoryText" id="victoryText"></div></div>
@@ -133,7 +106,6 @@ const db = firebase.database();
 let roomId='', playerName='', role='';
 const roles=["村人","人狼","占い師","霊能者","狂人","狩人"];
 let players=[];
-
 let logs = {};
 
 function toggleBGM(){const bgm=document.getElementById("bgm"); bgm.paused?bgm.play():bgm.pause();}
@@ -145,12 +117,12 @@ function startGame(){
   const playerRef=db.ref('rooms/'+roomId+'/players/'+playerName);
   playerRef.get().then(snap=>{
     if(snap.exists()){alert("同じ名前が存在");return;}
-    role = roles[Math.floor(Math.random()*roles.length)];
+    role=roles[Math.floor(Math.random()*roles.length)];
     playerRef.set({role:role,alive:true,vote:null}).then(()=>{
       document.getElementById("lobbyScreen").style.display="none";
       document.getElementById("gameScreen").style.display="block";
-      document.getElementById("currentRoom").textContent = roomId;
-      document.getElementById("role").textContent = `役職: ${role}`;
+      document.getElementById("currentRoom").textContent=roomId;
+      document.getElementById("role").textContent=`役職: ${role}`;
       setupListeners();
     });
   });
@@ -160,10 +132,9 @@ function setupListeners(){
   db.ref('rooms/'+roomId+'/players').on('value',snap=>{
     const data = snap.val()||{};
     players = Object.keys(data);
-    document.getElementById('players').innerHTML=players.map(p=>{return `<p>${p} (${data[p].role}) ${data[p].alive?"🟢":"🔴"}</p>`}).join('');
+    document.getElementById('players').innerHTML = players.map(p=>`<p>${p} (${data[p].role}) ${data[p].alive?"🟢":"🔴"}</p>`).join('');
     setupTabs();
-    showNightActions();
-    showVoteButtons();
+    updateTurnDisplay();
   });
 
   db.ref('rooms/'+roomId+'/chat').on('child_added',snap=>{
@@ -195,35 +166,32 @@ function setupTabs(){
 function addLog(tab,msg){if(!logs[tab]) logs[tab]=[]; logs[tab].push(msg); const active=document.querySelector('.tabBtn.active').textContent; if(active===tab) showLog(tab);}
 function switchTab(tab,e){document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active')); e.target.classList.add('active'); showLog(tab);}
 function showLog(tab){const div=document.getElementById('logView'); div.innerHTML=logs[tab].map(m=>`<p>${m}</p>`).join(''); div.scrollTop=div.scrollHeight;}
-
 function sendMessage(){
-  const msg=document.getElementById("msg").value.trim();
-  if(!msg) return;
+  const msg=document.getElementById("msg").value.trim(); if(!msg) return;
   db.ref('rooms/'+roomId+'/chat').push({player:playerName,msg:msg});
   db.ref('rooms/'+roomId+'/logs/'+playerName).push(`自分: ${msg}`);
   document.getElementById("msg").value='';
 }
 
+// ターン管理とボタン表示
+function updateTurnDisplay(){
+  // 仮で昼/夜ランダム切替（本来はサーバで管理）
+  const turnType=Math.random()>0.5?'day':'night';
+  document.getElementById('turn').textContent=turnType==='day'?'昼':'夜';
+  document.getElementById('votes').style.display=turnType==='day'?'block':'none';
+  document.getElementById('nightActions').style.display=turnType==='night'?'block':'none';
+  showVoteButtons();
+  showNightActions();
+}
+
 function showNightActions(){
-  const nightDiv=document.getElementById('nightActions'); nightDiv.innerHTML='';
-  if(!players.length) return;
-  if(role==="人狼"||role==="占い師"||role==="狩人"){
-    players.forEach(p=>{
-      const btn=document.createElement('button'); btn.textContent=p; btn.className='nightBtn';
-      btn.onclick=()=>db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:role,target:p})&&alert(role+"行動:"+p);
-      nightDiv.appendChild(btn);
-    });
-  }
+  const nightDiv=document.getElementById('nightActions'); nightDiv.innerHTML=''; if(role!=="人狼"&&role!=="占い師"&&role!=="狩人") return;
+  players.forEach(p=>{const btn=document.createElement('button'); btn.textContent=p; btn.className='nightBtn';
+    btn.onclick=()=>db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:role,target:p})&&alert(role+"行動:"+p); nightDiv.appendChild(btn);});
 }
 
 function showVoteButtons(){
-  const votesDiv=document.getElementById('votes'); votesDiv.innerHTML='';
-  players.forEach(p=>{
-    if(p===playerName) return;
-    const btn=document.createElement('button'); btn.textContent=p; btn.className='voteBtn';
-    btn.onclick=()=>db.ref('rooms/'+roomId+'/votes/'+playerName).set(p);
-    votesDiv.appendChild(btn);
-  });
+  const votesDiv=document.getElementById('votes'); votesDiv.innerHTML=''; players.forEach(p=>{if(p===playerName) return; const btn=document.createElement('button'); btn.textContent=p; btn.className='voteBtn'; btn.onclick=()=>db.ref('rooms/'+roomId+'/votes/'+playerName).set(p); votesDiv.appendChild(btn);});
 }
 
 // 背景霧アニメーション
@@ -231,21 +199,8 @@ const canvas=document.getElementById('fogCanvas');
 const ctx=canvas.getContext('2d');
 canvas.width=window.innerWidth; canvas.height=window.innerHeight;
 let fogParticles=[];
-for(let i=0;i<50;i++){
-  fogParticles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:50+Math.random()*50,s:0.1+Math.random()*0.3});
-}
-function animateFog(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  fogParticles.forEach(p=>{
-    ctx.beginPath();
-    ctx.fillStyle='rgba(255,255,255,0.05)';
-    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fill();
-    p.x+=p.s;
-    if(p.x>canvas.width) p.x=0;
-  });
-  requestAnimationFrame(animateFog);
-}
+for(let i=0;i<50;i++){fogParticles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:50+Math.random()*50,s:0.1+Math.random()*0.3});}
+function animateFog(){ctx.clearRect(0,0,canvas.width,canvas.height); fogParticles.forEach(p=>{ctx.beginPath(); ctx.fillStyle='rgba(255,255,255,0.05)'; ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); p.x+=p.s; if(p.x>canvas.width) p.x=0;}); requestAnimationFrame(animateFog);}
 animateFog();
 </script>
 </body>
