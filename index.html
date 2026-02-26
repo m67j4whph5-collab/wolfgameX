@@ -3,13 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>オンライン人狼ジャッジメント風 完全版</title>
+<title>オンライン人狼風 ChatGPT感覚</title>
 <style>
 body{margin:0;padding:0;font-family:sans-serif;background:linear-gradient(#0d1b2a,#1b263b);color:white;overflow-x:hidden;}
 .wrapper{max-width:600px;margin:0 auto;padding:10px;background:rgba(0,0,0,0.25);backdrop-filter:blur(5px);border-radius:10px;position:relative;}
 #infoBar{font-size:12px;display:flex;justify-content:space-between;margin-bottom:5px;}
-#logView{background: rgba(0,0,0,0.7);padding:10px;border-radius:6px;max-height:70vh;min-height:70vh;overflow-y:auto;font-size:14px;width:95%;margin:0 auto;}
-.bubble{max-width:80%;margin:5px;padding:8px 12px;border-radius:15px;clear:both;display:inline-block;word-wrap:break-word;}
+#logView{
+  background: rgba(0,0,0,0.7);
+  padding:10px;
+  border-radius:6px;
+  max-height:70vh;
+  min-height:70vh;
+  overflow-y:auto;
+  font-size:14px;       /* ChatGPT感覚の文字 */
+  line-height:1.4;      /* 行間調整 */
+  width:95%;
+  margin:0 auto;
+}
+.bubble{
+  max-width:85%;         /* ChatGPT感覚の吹き出し幅 */
+  margin:4px 0;
+  padding:6px 10px;      /* 内側余白もChatGPT風 */
+  border-radius:15px;
+  clear:both;
+  display:inline-block;
+  word-wrap:break-word;
+}
 .self{background:#4a90e2;color:white;float:right;text-align:right;}
 .other{background:#333;color:white;float:left;text-align:left;}
 #tabs{margin-top:5px;}
@@ -71,38 +90,10 @@ const roleIcons={"村人":"https://raw.githubusercontent.com/m67j4whph5-collab/w
 let players=[],logs={};
 
 function toggleBGM(){const bgm=document.getElementById("bgm"); bgm.paused?bgm.play():bgm.pause();}
-function startGame(){
-roomId=document.getElementById("roomId").value.trim();
-playerName=document.getElementById("playerName").value.trim();
-if(!roomId||!playerName){alert("ルームIDと名前を入力");return;}
-const playerRef=db.ref('rooms/'+roomId+'/players/'+playerName);
-playerRef.get().then(snap=>{
-if(snap.exists()){alert("同じ名前が存在");return;}
-role=roles[Math.floor(Math.random()*roles.length)];
-playerRef.set({role:role,alive:true,vote:null}).then(()=>{
-document.getElementById("lobbyScreen").style.display="none";
-document.getElementById("gameScreen").style.display="block";
-document.getElementById("currentRoom").textContent=roomId;
-document.getElementById("role").textContent=role;
-setupListeners();
-});
-});
-}
-
-function setupListeners(){
-db.ref('rooms/'+roomId+'/players').on('value',snap=>{
-players=Object.keys(snap.val()||{});
-setupTabs();updateTurnDisplay();
-});
-db.ref('rooms/'+roomId+'/chat').on('child_added',snap=>{
-const msg=snap.val(); addLog('チャット',msg.player,msg.msg,msg.role);
-});
-}
-
-function setupTabs(){const tabsDiv=document.getElementById('tabs'); tabsDiv.innerHTML=''; const allTabs=['チャット','自分ログ',...players]; allTabs.forEach(tab=>{const btn=document.createElement('button');btn.textContent=tab;btn.onclick=(e)=>{switchTab(tab,e)}; if(tab==='チャット') btn.classList.add('active'); tabsDiv.appendChild(btn);if(!logs[tab]) logs[tab]=[];}); showLog('チャット');}
-
+function startGame(){roomId=document.getElementById("roomId").value.trim();playerName=document.getElementById("playerName").value.trim();if(!roomId||!playerName){alert("ルームIDと名前を入力");return;}const playerRef=db.ref('rooms/'+roomId+'/players/'+playerName);playerRef.get().then(snap=>{if(snap.exists()){alert("同じ名前が存在");return;}role=roles[Math.floor(Math.random()*roles.length)];playerRef.set({role:role,alive:true,vote:null}).then(()=>{document.getElementById("lobbyScreen").style.display="none";document.getElementById("gameScreen").style.display="block";document.getElementById("currentRoom").textContent=roomId;document.getElementById("role").textContent=role;setupListeners();});});}
+function setupListeners(){db.ref('rooms/'+roomId+'/players').on('value',snap=>{players=Object.keys(snap.val()||{});setupTabs();updateTurnDisplay();});db.ref('rooms/'+roomId+'/chat').on('child_added',snap=>{const msg=snap.val();addLog('チャット',msg.player,msg.msg,msg.role);});}
+function setupTabs(){const tabsDiv=document.getElementById('tabs');tabsDiv.innerHTML=''; const allTabs=['チャット','自分ログ',...players]; allTabs.forEach(tab=>{const btn=document.createElement('button');btn.textContent=tab;btn.onclick=(e)=>{switchTab(tab,e)}; if(tab==='チャット') btn.classList.add('active'); tabsDiv.appendChild(btn);if(!logs[tab]) logs[tab]=[];}); showLog('チャット');}
 function addLog(tab,player,msg,playerRole){if(!logs[tab]) logs[tab]=[]; const cls=(player===playerName)?'self':'other'; const icon=roleIcons[playerRole]||""; logs[tab].push(`<div class="bubble ${cls}"><img src="${icon}"> <b>${player}:</b> ${msg}</div>`); const active=document.querySelector('#tabs button.active'); if(active && active.textContent===tab) showLog(tab);}
-
 function switchTab(tab,e){document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active')); e.target.classList.add('active'); showLog(tab);}
 function showLog(tab){const div=document.getElementById('logView'); div.innerHTML=logs[tab].join(''); div.scrollTop=div.scrollHeight;}
 function sendMessage(){const msg=document.getElementById("msg").value.trim();if(!msg)return; db.ref('rooms/'+roomId+'/chat').push({player:playerName,msg:msg,role:role}); db.ref('rooms/'+roomId+'/logs/'+playerName).push(msg); document.getElementById("msg").value='';}
