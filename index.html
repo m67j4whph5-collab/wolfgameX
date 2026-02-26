@@ -2,67 +2,74 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>オンライン人狼 幻想版</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<title>オンライン人狼ジャッジメント風（吹き出し版）</title>
 <style>
 body{
-  font-family:sans-serif;
   margin:0; padding:0;
-  background: linear-gradient(#0d1b2a, #1b263b); /* 夜の森の暗めグラデーション */
+  font-family:sans-serif;
+  background: linear-gradient(#0d1b2a,#1b263b);
   overflow-x:hidden;
   color:white;
-  text-align:center;
 }
 .wrapper{
   max-width:600px;
-  margin:10px auto;
+  margin:0 auto;
   padding:10px;
   background: rgba(0,0,0,0.25);
   backdrop-filter: blur(5px);
   border-radius:10px;
   position:relative;
 }
-input,button{
-  padding:10px;
-  margin:3px;
-  font-size:16px;
-  border-radius:8px;
-  border:none;
+#infoBar{
+  font-size:12px;
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:5px;
 }
-#logView,#chat,#players,#votes,#nightActions{
+#logView{
   background: rgba(0,0,0,0.7);
   padding:10px;
-  margin:5px auto;
-  max-height:80vh;
-  overflow:auto;
   border-radius:6px;
-  font-size:16px;
-  width:95%;  /* 横幅固定 */
+  max-height:65vh;
+  overflow:auto;
+  width:95%;
+  margin:0 auto;
 }
-button{cursor:pointer;background:#444;color:white;box-shadow:0 2px 4px rgba(0,0,0,0.5);}
-button:hover{background:#666;}
-#tabs button{margin:2px;}
-.tabBtn.active{background:#555;}
-#victoryAnim{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;display:none;}
-.victoryText{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:32px;font-weight:bold;text-shadow:0 0 20px #fff;}
+.bubble{
+  max-width:80%;
+  margin:5px;
+  padding:8px 12px;
+  border-radius:15px;
+  clear:both;
+  display:inline-block;
+  word-wrap: break-word;
+}
+.self{background:#4a90e2; color:white; float:right; text-align:right;}
+.other{background:#333; color:white; float:left; text-align:left;}
+#tabs{margin-top:5px;}
+#tabs button{
+  padding:5px 8px; margin:2px; font-size:14px;
+  border:none; border-radius:6px; background:#444; color:white;
+}
+#tabs button.active{background:#666;}
+#inputBar{display:flex; margin-top:5px;}
+#inputBar input{flex:1; padding:10px; border-radius:6px; border:none;}
+#inputBar button{padding:10px; margin-left:3px; border-radius:6px; border:none; background:#555; color:white;}
+#votes,#nightActions{display:none; margin-top:5px; width:95%; margin-left:auto; margin-right:auto;}
+button.voteBtn,button.nightBtn{margin:2px;padding:8px 10px;border-radius:6px;border:none;background:#444;color:white;}
+button.voteBtn:hover,button.nightBtn:hover{background:#666;}
 #fogCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;}
-#currentRoom,#role,#turn{font-size:12px;} /* 小さく表示 */
 </style>
-
 <link rel="icon" href="https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/IMG_1346.png">
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
 <audio id="bgm" src="https://www.chosic.com/wp-content/uploads/2021/10/Halloween-Horror-Creepy-Piano.mp3" loop autoplay></audio>
-
 <canvas id="fogCanvas"></canvas>
 
 <div class="wrapper" id="lobbyScreen">
-  <h1>オンライン人狼 幻想版</h1>
+  <h2>オンライン人狼ジャッジメント風</h2>
   <input id="roomId" placeholder="ルームID">
   <input id="playerName" placeholder="名前">
   <button onclick="startGame()">ルーム作成/参加</button>
@@ -70,46 +77,45 @@ button:hover{background:#666;}
 </div>
 
 <div class="wrapper" id="gameScreen" style="display:none;">
-  <h1>ルーム: <span id="currentRoom"></span></h1>
-  <h2 id="role">役職: 未決定</h2>
-  <h2 id="turn">昼/夜: 未開始</h2>
+  <div id="infoBar">
+    <span>ルーム: <span id="currentRoom"></span></span>
+    <span>役職: <span id="role"></span></span>
+    <span>昼/夜: <span id="turn"></span></span>
+  </div>
 
-  <h3>プレイヤー一覧</h3>
-  <div id="players"></div>
-
-  <div id="tabs"></div>
   <div id="logView"></div>
+  <div id="tabs"></div>
 
-  <input id="msg" placeholder="盛り上がろう！">
-  <button onclick="sendMessage()">送信</button>
+  <div id="inputBar">
+    <input id="msg" placeholder="盛り上がろう！">
+    <button onclick="sendMessage()">送信</button>
+  </div>
 
-  <div id="votes" style="display:none;"></div>
-  <div id="nightActions" style="display:none;"></div>
+  <div id="votes"></div>
+  <div id="nightActions"></div>
 </div>
 
-<div id="victoryAnim"><div class="victoryText" id="victoryText"></div></div>
-
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
 // Firebase設定
 const firebaseConfig = {
-  apiKey: "AIzaSyArrBmwJJdku58WdeAnQ3PeyiL2U2FweJ8",
-  authDomain: "online-wolfgame.firebaseapp.com",
-  databaseURL: "https://online-wolfgame-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "online-wolfgame",
-  storageBucket: "online-wolfgame.storage.app",
-  messagingSenderId: "582158578809",
-  appId: "1:582158578809:web:568851b778ea63813210a8"
+  apiKey:"AIzaSyArrBmwJJdku58WdeAnQ3PeyiL2U2FweJ8",
+  authDomain:"online-wolfgame.firebaseapp.com",
+  databaseURL:"https://online-wolfgame-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"online-wolfgame",
+  storageBucket:"online-wolfgame.storage.app",
+  messagingSenderId:"582158578809",
+  appId:"1:582158578809:web:568851b778ea63813210a8"
 };
-const app = firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const app=firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
 
 let roomId='', playerName='', role='';
 const roles=["村人","人狼","占い師","霊能者","狂人","狩人"];
-let players=[];
-let logs = {};
+let players=[], logs={};
 
 function toggleBGM(){const bgm=document.getElementById("bgm"); bgm.paused?bgm.play():bgm.pause();}
-
 function startGame(){
   roomId=document.getElementById("roomId").value.trim();
   playerName=document.getElementById("playerName").value.trim();
@@ -122,7 +128,7 @@ function startGame(){
       document.getElementById("lobbyScreen").style.display="none";
       document.getElementById("gameScreen").style.display="block";
       document.getElementById("currentRoom").textContent=roomId;
-      document.getElementById("role").textContent=`役職: ${role}`;
+      document.getElementById("role").textContent=role;
       setupListeners();
     });
   });
@@ -130,22 +136,14 @@ function startGame(){
 
 function setupListeners(){
   db.ref('rooms/'+roomId+'/players').on('value',snap=>{
-    const data = snap.val()||{};
-    players = Object.keys(data);
-    document.getElementById('players').innerHTML = players.map(p=>`<p>${p} (${data[p].role}) ${data[p].alive?"🟢":"🔴"}</p>`).join('');
+    const data=snap.val()||{};
+    players=Object.keys(data);
     setupTabs();
     updateTurnDisplay();
   });
-
   db.ref('rooms/'+roomId+'/chat').on('child_added',snap=>{
     const msg=snap.val();
-    addLog('チャット', `<b>${msg.player}:</b> ${msg.msg}`);
-  });
-
-  players.forEach(p=>{
-    db.ref('rooms/'+roomId+'/logs/'+p).on('child_added',snap=>{
-      addLog(p,snap.val());
-    });
+    addLog('チャット', msg.player, msg.msg);
   });
 }
 
@@ -154,8 +152,7 @@ function setupTabs(){
   const allTabs=['チャット','自分ログ',...players];
   allTabs.forEach(tab=>{
     const btn=document.createElement('button');
-    btn.className='tabBtn'; btn.textContent=tab;
-    btn.onclick=(e)=>{switchTab(tab,e);};
+    btn.textContent=tab; btn.onclick=(e)=>{switchTab(tab,e)};
     if(tab==='チャット') btn.classList.add('active');
     tabsDiv.appendChild(btn);
     if(!logs[tab]) logs[tab]=[];
@@ -163,44 +160,52 @@ function setupTabs(){
   showLog('チャット');
 }
 
-function addLog(tab,msg){if(!logs[tab]) logs[tab]=[]; logs[tab].push(msg); const active=document.querySelector('.tabBtn.active').textContent; if(active===tab) showLog(tab);}
-function switchTab(tab,e){document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active')); e.target.classList.add('active'); showLog(tab);}
-function showLog(tab){const div=document.getElementById('logView'); div.innerHTML=logs[tab].map(m=>`<p>${m}</p>`).join(''); div.scrollTop=div.scrollHeight;}
+function addLog(tab,player,msg){
+  if(!logs[tab]) logs[tab]=[];
+  const cls=(player===playerName)?'self':'other';
+  logs[tab].push(`<div class="bubble ${cls}"><b>${player}:</b> ${msg}</div>`);
+  const active=document.querySelector('#tabs button.active');
+  if(active && active.textContent===tab) showLog(tab);
+}
+
+function switchTab(tab,e){
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active'); showLog(tab);
+}
+
+function showLog(tab){
+  const div=document.getElementById('logView'); 
+  div.innerHTML=logs[tab].join('');
+  div.scrollTop=div.scrollHeight;
+}
+
 function sendMessage(){
-  const msg=document.getElementById("msg").value.trim(); if(!msg) return;
+  const msg=document.getElementById("msg").value.trim();
+  if(!msg) return;
   db.ref('rooms/'+roomId+'/chat').push({player:playerName,msg:msg});
-  db.ref('rooms/'+roomId+'/logs/'+playerName).push(`自分: ${msg}`);
+  db.ref('rooms/'+roomId+'/logs/'+playerName).push(msg);
   document.getElementById("msg").value='';
 }
 
-// ターン管理とボタン表示
+// ターン管理とボタン
 function updateTurnDisplay(){
-  // 仮で昼/夜ランダム切替（本来はサーバで管理）
   const turnType=Math.random()>0.5?'day':'night';
   document.getElementById('turn').textContent=turnType==='day'?'昼':'夜';
   document.getElementById('votes').style.display=turnType==='day'?'block':'none';
   document.getElementById('nightActions').style.display=turnType==='night'?'block':'none';
-  showVoteButtons();
-  showNightActions();
+  showVoteButtons(); showNightActions();
 }
 
+function showVoteButtons(){const votesDiv=document.getElementById('votes'); votesDiv.innerHTML=''; players.forEach(p=>{if(p===playerName) return; const btn=document.createElement('button'); btn.textContent=p; btn.className='voteBtn'; btn.onclick=()=>db.ref('rooms/'+roomId+'/votes/'+playerName).set(p); votesDiv.appendChild(btn);});}
 function showNightActions(){
   const nightDiv=document.getElementById('nightActions'); nightDiv.innerHTML=''; if(role!=="人狼"&&role!=="占い師"&&role!=="狩人") return;
-  players.forEach(p=>{const btn=document.createElement('button'); btn.textContent=p; btn.className='nightBtn';
-    btn.onclick=()=>db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:role,target:p})&&alert(role+"行動:"+p); nightDiv.appendChild(btn);});
+  players.forEach(p=>{const btn=document.createElement('button'); btn.textContent=p; btn.className='nightBtn'; btn.onclick=()=>db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:role,target:p})&&alert(role+"行動:"+p); nightDiv.appendChild(btn);});
 }
 
-function showVoteButtons(){
-  const votesDiv=document.getElementById('votes'); votesDiv.innerHTML=''; players.forEach(p=>{if(p===playerName) return; const btn=document.createElement('button'); btn.textContent=p; btn.className='voteBtn'; btn.onclick=()=>db.ref('rooms/'+roomId+'/votes/'+playerName).set(p); votesDiv.appendChild(btn);});
-}
-
-// 背景霧アニメーション
-const canvas=document.getElementById('fogCanvas');
-const ctx=canvas.getContext('2d');
-canvas.width=window.innerWidth; canvas.height=window.innerHeight;
-let fogParticles=[];
-for(let i=0;i<50;i++){fogParticles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:50+Math.random()*50,s:0.1+Math.random()*0.3});}
-function animateFog(){ctx.clearRect(0,0,canvas.width,canvas.height); fogParticles.forEach(p=>{ctx.beginPath(); ctx.fillStyle='rgba(255,255,255,0.05)'; ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); p.x+=p.s; if(p.x>canvas.width) p.x=0;}); requestAnimationFrame(animateFog);}
+// 霧アニメーション
+const canvas=document.getElementById('fogCanvas'); const ctx=canvas.getContext('2d'); canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+let fogParticles=[]; for(let i=0;i<50;i++){fogParticles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:50+Math.random()*50,s:0.1+Math.random()*0.3});}
+function animateFog(){ctx.clearRect(0,0,canvas.width,canvas.height); fogParticles.forEach(p=>{ctx.beginPath(); ctx.fillStyle='rgba(255,255,255,0.05)'; ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); p.x+=p.s; if(p.x>canvas.width)p.x=0;}); requestAnimationFrame(animateFog);}
 animateFog();
 </script>
 </body>
