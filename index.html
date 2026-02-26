@@ -29,14 +29,15 @@ input,button{
   border-radius:8px;
   border:none;
 }
-#chat,#players,#votes,#nightActions,#gameLog{
+#chat,#players,#votes,#nightActions,#gameLog,#myLog{
   background:#222;
   padding:8px;
   margin:5px;
-  max-height:180px;
+  max-height:200px;
   overflow:auto;
   border-radius:6px;
 }
+#chat, #myLog{font-size:16px;}
 h1,h2,h3{margin:5px;}
 button{
   cursor:pointer;
@@ -52,6 +53,10 @@ button:hover{background:#666;}
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   font-size:32px;font-weight:bold;text-shadow:0 0 20px #fff;
 }
+.tabBtn{padding:8px;margin:2px;font-size:14px;background:#333;color:white;border-radius:6px;}
+.tabBtn.active{background:#555;}
+.nightBtn{background:#880000;margin:3px;width:100px;}
+.voteBtn{background:#008800;margin:3px;width:100px;}
 </style>
 
 <link rel="manifest" href="manifest.json">
@@ -67,7 +72,6 @@ button:hover{background:#666;}
 </head>
 <body>
 
-<!-- BGMと効果音 -->
 <audio id="bgm" src="https://www.chosic.com/wp-content/uploads/2021/10/Halloween-Horror-Creepy-Piano.mp3" loop autoplay></audio>
 <audio id="soundAttack" src="https://freesound.org/data/previews/256/256113_3263906-lq.mp3"></audio>
 <audio id="soundVote" src="https://freesound.org/data/previews/170/170064_2437352-lq.mp3"></audio>
@@ -89,8 +93,14 @@ button:hover{background:#666;}
   <h3>プレイヤー一覧</h3>
   <div id="players"></div>
 
-  <h3>チャット</h3>
+  <div>
+    <button class="tabBtn active" onclick="showTab('chat')">チャット</button>
+    <button class="tabBtn" onclick="showTab('myLog')">自分ログ</button>
+  </div>
+
   <div id="chat"></div>
+  <div id="myLog" style="display:none;"></div>
+
   <input id="msg" placeholder="みんなで盛り上がろう！">
   <button onclick="sendMessage()">送信</button>
 
@@ -99,9 +109,6 @@ button:hover{background:#666;}
 
   <h3>夜行動</h3>
   <div id="nightActions"></div>
-
-  <h3>ゲームログ</h3>
-  <div id="gameLog"></div>
 </div>
 
 <div id="victoryAnim"><div class="victoryText" id="victoryText"></div></div>
@@ -123,9 +130,12 @@ let roomId='', playerName='', role='';
 const roles=["村人","人狼","占い師","霊能者","狂人","狩人"];
 let players=[], turn="昼";
 
-function toggleBGM(){
-  const bgm=document.getElementById("bgm");
-  bgm.paused?bgm.play():bgm.pause();
+function toggleBGM(){const bgm=document.getElementById("bgm"); bgm.paused?bgm.play():bgm.pause();}
+function showTab(tab){
+  document.getElementById('chat').style.display=(tab==='chat')?'block':'none';
+  document.getElementById('myLog').style.display=(tab==='myLog')?'block':'none';
+  document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
 }
 
 function startGame(){
@@ -147,6 +157,8 @@ function startGame(){
       const alive=data[p].alive?"🟢生存":"🔴死亡";
       return `<p>${p} (${data[p].role}) ${alive}</p>`;
     }).join('');
+    showNightActions();
+    showVoteButtons();
     checkVictory(data);
   });
 
@@ -156,26 +168,14 @@ function startGame(){
     chatDiv.innerHTML+=`<p><b>${msg.player}:</b> ${msg.msg}</p>`;
     chatDiv.scrollTop=chatDiv.scrollHeight;
     document.getElementById("soundVote").play();
+    db.ref('rooms/'+roomId+'/logs/'+playerName).push(msg.player + ": " + msg.msg);
   });
 
-  db.ref('rooms/'+roomId+'/votes').on('value',snap=>{
-    const data=snap.val()||{};
-    const voteDiv=document.getElementById('votes');
-    voteDiv.innerHTML=Object.keys(data).map(p=>`<p>${p} → ${data[p]}</p>`).join('');
-    if(turn==="昼") processVotes(data);
+  db.ref('rooms/'+roomId+'/logs/'+playerName).on('child_added',snap=>{
+    const myLogDiv=document.getElementById('myLog');
+    myLogDiv.innerHTML+=`<p>${snap.val()}</p>`;
+    myLogDiv.scrollTop=myLogDiv.scrollHeight;
   });
-
-  db.ref('rooms/'+roomId+'/nightActions').on('value',snap=>{
-    if(turn==="夜") processNight(snap.val()||{});
-  });
-
-  db.ref('rooms/'+roomId+'/turn').set(turn);
-  db.ref('rooms/'+roomId+'/turn').on('value',snap=>{
-    document.getElementById('turn').textContent='昼/夜: '+snap.val();
-  });
-
-  showNightActions();
-  gameLoop();
 }
 
 function sendMessage(){
@@ -189,49 +189,34 @@ function sendMessage(){
 function showNightActions(){
   const nightDiv=document.getElementById('nightActions');
   nightDiv.innerHTML='';
-  if(role==="人狼"){ addNightBtn("人狼"); }
-  else if(role==="占い師"){ addNightBtn("占い師"); }
-  else if(role==="狩人"){ addNightBtn("狩人"); }
+  if(!players.length) return;
+  if(role==="人狼"){ addNightBtns("人狼"); }
+  else if(role==="占い師"){ addNightBtns("占い師"); }
+  else if(role==="狩人"){ addNightBtns("狩人"); }
 }
 
-function addNightBtn(roleType){
-  const btn=document.createElement('button');
-  btn.textContent=roleType+"行動";
-  btn.onclick=()=>selectNightTarget(roleType);
-  document.getElementById('nightActions').appendChild(btn);
-}
-
-function selectNightTarget(roleType){
-  const target=prompt("誰に行動しますか？（名前）");
-  if(!target) return;
-  db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:roleType,target:target});
-  alert(roleType+"の行動を"+target+"に登録しました！");
-}
-
-function processNight(actions){
-  const logs=[];
-  db.ref('rooms/'+roomId+'/players').once('value').then(snap=>{
-    const data=snap.val()||{};
-    let protect=null;
-    for(const [p,act] of Object.entries(actions)){if(act.role==="狩人") protect=act.target;}
-    for(const [p,act] of Object.entries(actions)){
-      if(act.role==="人狼"&&act.target!==protect){if(data[act.target]&&data[act.target].alive){data[act.target].alive=false; logs.push(act.target+" が人狼に襲撃されました💀"); document.getElementById("soundAttack").play();}}
-      if(act.role==="占い師"&&data[act.target]){logs.push("占い師 "+p+" は "+act.target+" が "+data[act.target].role+" だと占いました🔮");}
-    }
-    for(const [p,d] of Object.entries(data)){db.ref('rooms/'+roomId+'/players/'+p).update(d);}
-    db.ref('rooms/'+roomId+'/nightActions').remove();
-    db.ref('rooms/'+roomId+'/gameLog').set(logs.join("<br>"));
-    turn="昼"; db.ref('rooms/'+roomId+'/turn').set(turn);
+function addNightBtns(roleType){
+  const nightDiv=document.getElementById('nightActions');
+  players.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.textContent=p;
+    btn.className='nightBtn';
+    btn.onclick=()=>db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:roleType,target:p})&&alert(roleType+"行動を"+p+"に登録");
+    nightDiv.appendChild(btn);
   });
 }
 
-function processVotes(votes){
-  const count={};
-  for(const p in votes){const t=votes[p];if(!count[t]) count[t]=0;count[t]++;}
-  let max=null,maxC=0;
-  for(const [t,c] of Object.entries(count)){if(c>maxC){max=t;maxC=c;}}
-  if(max){db.ref('rooms/'+roomId+'/players/'+max+'/alive').set(false); db.ref('rooms/'+roomId+'/gameLog').push(max+" が投票で吊られました💀"); document.getElementById("soundVote").play();}
-  db.ref('rooms/'+roomId+'/votes').remove(); turn="夜"; db.ref('rooms/'+roomId+'/turn').set(turn);
+function showVoteButtons(){
+  const votesDiv=document.getElementById('votes');
+  votesDiv.innerHTML='';
+  players.forEach(p=>{
+    if(p===playerName) return;
+    const btn=document.createElement('button');
+    btn.textContent=p;
+    btn.className='voteBtn';
+    btn.onclick=()=>db.ref('rooms/'+roomId+'/votes/'+playerName).set(p);
+    votesDiv.appendChild(btn);
+  });
 }
 
 function checkVictory(data){
@@ -248,7 +233,6 @@ function showVictory(msg){
   text.textContent=msg;
   anim.style.display="block";
   document.getElementById("soundVictory").play();
-  // 花火・光・霧アニメ
   let i=0;
   const interval=setInterval(()=>{
     const dot=document.createElement("div");
@@ -264,13 +248,6 @@ function showVictory(msg){
     i++; if(i>50) clearInterval(interval);
   },100);
   setTimeout(()=>{anim.style.display="none";},4000);
-}
-
-function gameLoop(){
-  setTimeout(()=>{
-    db.ref('rooms/'+roomId+'/turn').once('value').then(snap=>{turn=snap.val(); showNightActions();});
-    gameLoop();
-  },3000);
 }
 </script>
 
