@@ -5,223 +5,110 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>オンライン人狼ジャッジメント風 完全版</title>
 <style>
-body{
-  margin:0; padding:0;
-  font-family:sans-serif;
-  background: linear-gradient(#0d1b2a,#1b263b);
-  overflow-x:hidden;
-  color:white;
-}
-.wrapper{
-  max-width:600px;
-  margin:0 auto;
-  padding:10px;
-  background: rgba(0,0,0,0.25);
-  backdrop-filter: blur(5px);
-  border-radius:10px;
-  position:relative;
-}
-#infoBar{
-  font-size:12px;
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:5px;
-}
-#logView{
-  background: rgba(0,0,0,0.7);
-  padding:10px;
-  border-radius:6px;
-  max-height:65vh;
-  overflow:auto;
-  width:95%;
-  margin:0 auto;
-  height: calc(100vh - 200px); /* 上部情報＋入力欄分 */
-}
-.bubble{
-  max-width:80%;
-  margin:5px;
-  padding:8px 12px;
-  border-radius:15px;
-  clear:both;
-  display:inline-block;
-  word-wrap: break-word;
-}
-.self{background:#4a90e2; color:white; float:right; text-align:right;}
-.other{background:#333; color:white; float:left; text-align:left;}
+body{margin:0;padding:0;font-family:sans-serif;background:linear-gradient(#0d1b2a,#1b263b);color:white;overflow-x:hidden;}
+.wrapper{max-width:600px;margin:0 auto;padding:10px;background:rgba(0,0,0,0.25);backdrop-filter:blur(5px);border-radius:10px;position:relative;}
+#infoBar{font-size:12px;display:flex;justify-content:space-between;margin-bottom:5px;}
+#logView{background: rgba(0,0,0,0.7);padding:10px;border-radius:6px;max-height:70vh;min-height:70vh;overflow-y:auto;font-size:14px;width:95%;margin:0 auto;}
+.bubble{max-width:80%;margin:5px;padding:8px 12px;border-radius:15px;clear:both;display:inline-block;word-wrap:break-word;}
+.self{background:#4a90e2;color:white;float:right;text-align:right;}
+.other{background:#333;color:white;float:left;text-align:left;}
 #tabs{margin-top:5px;}
-#tabs button{
-  padding:5px 8px; margin:2px; font-size:14px;
-  border:none; border-radius:6px; background:#444; color:white;
-}
+#tabs button{padding:5px 8px;margin:2px;font-size:14px;border:none;border-radius:6px;background:#444;color:white;}
 #tabs button.active{background:#666;}
-#inputBar{
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 95%;
-  display:flex;
-  background: rgba(0,0,0,0.6);
-  padding:5px;
-  border-radius:10px 10px 0 0;
-}
-#inputBar input{flex:1; padding:10px; border-radius:6px; border:none;}
-#inputBar button{padding:10px; margin-left:3px; border-radius:6px; border:none; background:#555; color:white;}
-#votes,#nightActions{display:none; margin-top:5px; width:95%; margin-left:auto; margin-right:auto;}
+#inputBar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:95%;display:flex;background: rgba(0,0,0,0.7);padding:5px;border-radius:10px 10px 0 0;}
+#inputBar input{flex:1;padding:8px;border-radius:6px;border:none;font-size:14px;}
+#inputBar button{padding:8px;margin-left:3px;border-radius:6px;border:none;background:#555;color:white;font-size:14px;}
+#votes,#nightActions{display:none;margin-top:5px;width:95%;margin:0 auto;}
 button.voteBtn,button.nightBtn{margin:2px;padding:8px 10px;border-radius:6px;border:none;background:#444;color:white;}
 button.voteBtn:hover,button.nightBtn:hover{background:#666;}
 #fogCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;}
-.bubble img{width:24px; height:24px; vertical-align:middle; margin-right:5px; border-radius:50%;}
+.bubble img{width:24px;height:24px;vertical-align:middle;margin-right:5px;border-radius:50%;}
 </style>
 <link rel="icon" href="https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/IMG_1346.png">
 </head>
 <body>
-
 <audio id="bgm" src="https://www.chosic.com/wp-content/uploads/2021/10/Halloween-Horror-Creepy-Piano.mp3" loop autoplay></audio>
 <canvas id="fogCanvas"></canvas>
 
 <div class="wrapper" id="lobbyScreen">
-  <h2>オンライン人狼ジャッジメント風</h2>
-  <input id="roomId" placeholder="ルームID">
-  <input id="playerName" placeholder="名前">
-  <button onclick="startGame()">ルーム作成/参加</button>
-  <button onclick="toggleBGM()">BGM ON/OFF</button>
+<h2>オンライン人狼ジャッジメント風</h2>
+<input id="roomId" placeholder="ルームID">
+<input id="playerName" placeholder="名前">
+<button onclick="startGame()">ルーム作成/参加</button>
+<button onclick="toggleBGM()">BGM ON/OFF</button>
 </div>
 
 <div class="wrapper" id="gameScreen" style="display:none;">
-  <div id="infoBar">
-    <span>ルーム: <span id="currentRoom"></span></span>
-    <span>役職: <span id="role"></span></span>
-    <span>昼/夜: <span id="turn"></span></span>
-  </div>
+<div id="infoBar">
+<span>ルーム: <span id="currentRoom"></span></span>
+<span>役職: <span id="role"></span></span>
+<span>昼/夜: <span id="turn"></span></span>
+</div>
 
-  <div id="logView"></div>
-  <div id="tabs"></div>
+<div id="logView"></div>
+<div id="tabs"></div>
 
-  <div id="votes"></div>
-  <div id="nightActions"></div>
+<div id="votes"></div>
+<div id="nightActions"></div>
 
-  <div id="inputBar">
-    <input id="msg" placeholder="盛り上がろう！">
-    <button onclick="sendMessage()">送信</button>
-  </div>
+<div id="inputBar">
+<input id="msg" placeholder="盛り上がろう！">
+<button onclick="sendMessage()">送信</button>
+</div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
 // Firebase設定
-const firebaseConfig = {
-  apiKey:"AIzaSyArrBmwJJdku58WdeAnQ3PeyiL2U2FweJ8",
-  authDomain:"online-wolfgame.firebaseapp.com",
-  databaseURL:"https://online-wolfgame-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:"online-wolfgame",
-  storageBucket:"online-wolfgame.storage.app",
-  messagingSenderId:"582158578809",
-  appId:"1:582158578809:web:568851b778ea63813210a8"
-};
+const firebaseConfig={apiKey:"AIzaSyArrBmwJJdku58WdeAnQ3PeyiL2U2FweJ8",authDomain:"online-wolfgame.firebaseapp.com",databaseURL:"https://online-wolfgame-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"online-wolfgame",storageBucket:"online-wolfgame.storage.app",messagingSenderId:"582158578809",appId:"1:582158578809:web:568851b778ea63813210a8"};
 const app=firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
 
-let roomId='', playerName='', role='';
+let roomId='',playerName='',role='';
 const roles=["村人","人狼","占い師","霊能者","狂人","狩人"];
-const roleIcons={
-  "村人":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/villager.png",
-  "人狼":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/werewolf.png",
-  "占い師":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/seer.png",
-  "霊能者":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/medium.png",
-  "狂人":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/traitor.png",
-  "狩人":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/hunter.png"
-};
-let players=[], logs={};
+const roleIcons={"村人":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/villager.png","人狼":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/werewolf.png","占い師":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/seer.png","霊能者":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/medium.png","狂人":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/traitor.png","狩人":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/hunter.png"};
+let players=[],logs={};
 
 function toggleBGM(){const bgm=document.getElementById("bgm"); bgm.paused?bgm.play():bgm.pause();}
 function startGame(){
-  roomId=document.getElementById("roomId").value.trim();
-  playerName=document.getElementById("playerName").value.trim();
-  if(!roomId||!playerName){alert("ルームIDと名前を入力");return;}
-  const playerRef=db.ref('rooms/'+roomId+'/players/'+playerName);
-  playerRef.get().then(snap=>{
-    if(snap.exists()){alert("同じ名前が存在");return;}
-    role=roles[Math.floor(Math.random()*roles.length)];
-    playerRef.set({role:role,alive:true,vote:null}).then(()=>{
-      document.getElementById("lobbyScreen").style.display="none";
-      document.getElementById("gameScreen").style.display="block";
-      document.getElementById("currentRoom").textContent=roomId;
-      document.getElementById("role").textContent=role;
-      setupListeners();
-    });
-  });
+roomId=document.getElementById("roomId").value.trim();
+playerName=document.getElementById("playerName").value.trim();
+if(!roomId||!playerName){alert("ルームIDと名前を入力");return;}
+const playerRef=db.ref('rooms/'+roomId+'/players/'+playerName);
+playerRef.get().then(snap=>{
+if(snap.exists()){alert("同じ名前が存在");return;}
+role=roles[Math.floor(Math.random()*roles.length)];
+playerRef.set({role:role,alive:true,vote:null}).then(()=>{
+document.getElementById("lobbyScreen").style.display="none";
+document.getElementById("gameScreen").style.display="block";
+document.getElementById("currentRoom").textContent=roomId;
+document.getElementById("role").textContent=role;
+setupListeners();
+});
+});
 }
 
 function setupListeners(){
-  db.ref('rooms/'+roomId+'/players').on('value',snap=>{
-    const data=snap.val()||{};
-    players=Object.keys(data);
-    setupTabs();
-    updateTurnDisplay();
-  });
-  db.ref('rooms/'+roomId+'/chat').on('child_added',snap=>{
-    const msg=snap.val();
-    addLog('チャット', msg.player, msg.msg, msg.role);
-  });
+db.ref('rooms/'+roomId+'/players').on('value',snap=>{
+players=Object.keys(snap.val()||{});
+setupTabs();updateTurnDisplay();
+});
+db.ref('rooms/'+roomId+'/chat').on('child_added',snap=>{
+const msg=snap.val(); addLog('チャット',msg.player,msg.msg,msg.role);
+});
 }
 
-function setupTabs(){
-  const tabsDiv=document.getElementById('tabs'); tabsDiv.innerHTML='';
-  const allTabs=['チャット','自分ログ',...players];
-  allTabs.forEach(tab=>{
-    const btn=document.createElement('button');
-    btn.textContent=tab; btn.onclick=(e)=>{switchTab(tab,e)};
-    if(tab==='チャット') btn.classList.add('active');
-    tabsDiv.appendChild(btn);
-    if(!logs[tab]) logs[tab]=[];
-  });
-  showLog('チャット');
-}
+function setupTabs(){const tabsDiv=document.getElementById('tabs'); tabsDiv.innerHTML=''; const allTabs=['チャット','自分ログ',...players]; allTabs.forEach(tab=>{const btn=document.createElement('button');btn.textContent=tab;btn.onclick=(e)=>{switchTab(tab,e)}; if(tab==='チャット') btn.classList.add('active'); tabsDiv.appendChild(btn);if(!logs[tab]) logs[tab]=[];}); showLog('チャット');}
 
-function addLog(tab,player,msg,playerRole){
-  if(!logs[tab]) logs[tab]=[];
-  const cls=(player===playerName)?'self':'other';
-  const icon=roleIcons[playerRole]||"";
-  logs[tab].push(`<div class="bubble ${cls}"><img src="${icon}"> <b>${player}:</b> ${msg}</div>`);
-  const active=document.querySelector('#tabs button.active');
-  if(active && active.textContent===tab) showLog(tab);
-}
+function addLog(tab,player,msg,playerRole){if(!logs[tab]) logs[tab]=[]; const cls=(player===playerName)?'self':'other'; const icon=roleIcons[playerRole]||""; logs[tab].push(`<div class="bubble ${cls}"><img src="${icon}"> <b>${player}:</b> ${msg}</div>`); const active=document.querySelector('#tabs button.active'); if(active && active.textContent===tab) showLog(tab);}
 
-function switchTab(tab,e){
-  document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));
-  e.target.classList.add('active'); showLog(tab);
-}
-
-function showLog(tab){
-  const div=document.getElementById('logView'); 
-  div.innerHTML=logs[tab].join('');
-  div.scrollTop=div.scrollHeight;
-}
-
-function sendMessage(){
-  const msg=document.getElementById("msg").value.trim();
-  if(!msg) return;
-  db.ref('rooms/'+roomId+'/chat').push({player:playerName,msg:msg,role:role});
-  db.ref('rooms/'+roomId+'/logs/'+playerName).push(msg);
-  document.getElementById("msg").value='';
-}
-
-// ターン管理とボタン
-function updateTurnDisplay(){
-  const turnType=Math.random()>0.5?'day':'night';
-  document.getElementById('turn').textContent=turnType==='day'?'昼':'夜';
-  document.getElementById('votes').style.display=turnType==='day'?'block':'none';
-  document.getElementById('nightActions').style.display=turnType==='night'?'block':'none';
-  showVoteButtons(); showNightActions();
-}
-
-function showVoteButtons(){const votesDiv=document.getElementById('votes'); votesDiv.innerHTML=''; players.forEach(p=>{if(p===playerName) return; const btn=document.createElement('button'); btn.textContent=p; btn.className='voteBtn'; btn.onclick=()=>db.ref('rooms/'+roomId+'/votes/'+playerName).set(p); votesDiv.appendChild(btn);});}
-function showNightActions(){
-  const nightDiv=document.getElementById('nightActions'); nightDiv.innerHTML=''; if(role!=="人狼"&&role!=="占い師"&&role!=="狩人") return;
-  players.forEach(p=>{const btn=document.createElement('button'); btn.textContent=p; btn.className='nightBtn'; btn.onclick=()=>db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:role,target:p})&&alert(role+"行動:"+p); nightDiv.appendChild(btn);});
-}
+function switchTab(tab,e){document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active')); e.target.classList.add('active'); showLog(tab);}
+function showLog(tab){const div=document.getElementById('logView'); div.innerHTML=logs[tab].join(''); div.scrollTop=div.scrollHeight;}
+function sendMessage(){const msg=document.getElementById("msg").value.trim();if(!msg)return; db.ref('rooms/'+roomId+'/chat').push({player:playerName,msg:msg,role:role}); db.ref('rooms/'+roomId+'/logs/'+playerName).push(msg); document.getElementById("msg").value='';}
+function updateTurnDisplay(){const turnType=Math.random()>0.5?'day':'night'; document.getElementById('turn').textContent=turnType==='day'?'昼':'夜'; document.getElementById('votes').style.display=turnType==='day'?'block':'none'; document.getElementById('nightActions').style.display=turnType==='night'?'block':'none'; showVoteButtons(); showNightActions();}
+function showVoteButtons(){const votesDiv=document.getElementById('votes'); votesDiv.innerHTML=''; players.forEach(p=>{if(p===playerName)return; const btn=document.createElement('button'); btn.textContent=p; btn.className='voteBtn'; btn.onclick=()=>db.ref('rooms/'+roomId+'/votes/'+playerName).set(p); votesDiv.appendChild(btn);});}
+function showNightActions(){const nightDiv=document.getElementById('nightActions'); nightDiv.innerHTML=''; if(role!=="人狼"&&role!=="占い師"&&role!=="狩人")return; players.forEach(p=>{const btn=document.createElement('button'); btn.textContent=p; btn.className='nightBtn'; btn.onclick=()=>db.ref('rooms/'+roomId+'/nightActions/'+playerName).set({role:role,target:p})&&alert(role+"行動:"+p); nightDiv.appendChild(btn);});}
 
 // 霧アニメーション
 const canvas=document.getElementById('fogCanvas'); const ctx=canvas.getContext('2d'); canvas.width=window.innerWidth; canvas.height=window.innerHeight;
@@ -231,44 +118,3 @@ animateFog();
 </script>
 </body>
 </html>
-
-#logView{
-  background: rgba(0,0,0,0.7);
-  padding:10px;
-  border-radius:6px;
-  max-height:70vh; /* ログを画面70%で固定 */
-  overflow-y:auto;
-  font-size:14px; /* 小さめ文字 */
-  width:95%;
-  margin:0 auto;
-}
-
-#inputBar{
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 95%;
-  display:flex;
-  background: rgba(0,0,0,0.7);
-  padding:5px;
-  border-radius:10px 10px 0 0;
-}
-
-#inputBar input{
-  flex:1;
-  padding:8px;
-  border-radius:6px;
-  border:none;
-  font-size:14px; /* 小さめ文字 */
-}
-
-#inputBar button{
-  padding:8px;
-  margin-left:3px;
-  border-radius:6px;
-  border:none;
-  background:#555;
-  color:white;
-  font-size:14px; /* 小さめ文字 */
-}
