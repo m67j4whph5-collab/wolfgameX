@@ -6,9 +6,8 @@
 <title>完全自動オンライン人狼</title>
 <style>
 body{margin:0;padding:0;font-family:sans-serif;color:white;background:#0d1b2a;overflow:hidden;}
-canvas#fogCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;}
 #playerBar{position:fixed;top:0;left:0;width:100%;background:rgba(0,0,0,0.5);display:flex;flex-wrap:wrap;justify-content:center;align-items:center;padding:5px;z-index:1000;max-height:80px;overflow-y:auto;}
-.playerIcon{position:relative;margin:5px;text-align:center;transition:transform 0.3s;}
+.playerIcon{position:relative;margin:5px;text-align:center;transition:transform 0.3s;cursor:pointer;}
 .playerIcon img{width:50px;height:50px;border-radius:50%;box-shadow:0 0 8px rgba(0,0,0,0.8);}
 .playerIcon.dead img{opacity:0.4;}
 .coStamp{position:absolute;top:-5px;right:-5px;font-size:14px;color:yellow;font-weight:bold;display:none;text-shadow:0 0 5px #fff;}
@@ -31,8 +30,6 @@ canvas#fogCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;p
 </style>
 </head>
 <body>
-<canvas id="fogCanvas"></canvas>
-<audio id="bgm" src="https://www.chosic.com/wp-content/uploads/2021/10/Halloween-Horror-Creepy-Piano.mp3" loop autoplay></audio>
 
 <div id="playerBar"></div>
 
@@ -46,7 +43,7 @@ canvas#fogCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;p
 </div>
 
 <div id="inputBar">
-<input id="msg" placeholder="盛り上がろう！">
+<input id="msg" placeholder="チャットを入力">
 <button onclick="sendMessage()">送信</button>
 <button onclick="toggleCO()">CO</button>
 </div>
@@ -68,10 +65,12 @@ const firebaseConfig={apiKey:"YOUR_API_KEY",authDomain:"YOUR_AUTH_DOMAIN",databa
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
 
-let roomId='room1',playerName='Player'+Math.floor(Math.random()*100);
-let players=[],aliveStatus={},playerIcons={},coStatus={},roles={},turn='day',dayTime=240,votes={};
+// --- 初期設定 ---
+let roomId='room1';
+let playerName='Player'+Math.floor(Math.random()*100);
+let players=[],aliveStatus={},roles={},coStatus={},votes={},turn='day',dayTime=240;
 
-// --- タブ ---
+// --- タブ切替 ---
 function showTab(tabId){
   document.getElementById("logView").style.display=(tabId==='logView')?'block':'none';
   document.getElementById("graveChat").style.display=(tabId==='graveChat')?'block':'none';
@@ -81,13 +80,13 @@ function showTab(tabId){
 
 // --- 参加同期 ---
 function joinRoom(){
-  db.ref('rooms/'+roomId+'/players/'+playerName).set({alive:true,icon:1,co:false,role:'未定',win:0,lose:0,count:0});
+  db.ref('rooms/'+roomId+'/players/'+playerName).set({alive:true,icon:'wolf.png',co:false,role:'未定',win:0,lose:0,count:0});
   db.ref('rooms/'+roomId+'/players').on('value',snap=>{
-    const data=snap.val(); players=Object.keys(data); aliveStatus={}; playerIcons={}; roles={}; document.getElementById('playerBar').innerHTML='';
+    const data=snap.val(); players=Object.keys(data); document.getElementById('playerBar').innerHTML='';
     for(const p of players){
-      aliveStatus[p]=data[p].alive; playerIcons[p]=data[p].icon; roles[p]=data[p].role;
-      const div=document.createElement('div'); div.className='playerIcon'+(data[p].alive?'':' dead'); div.id='icon_'+p;
-      div.innerHTML=`<img src="https://via.placeholder.com/50?text=${data[p].icon}"><div>${p}</div><div class="coStamp" id="co_${p}" style="display:${data[p].co?'block':'none'}">CO</div>`;
+      aliveStatus[p]=data[p].alive; roles[p]=data[p].role; coStatus[p]=data[p].co;
+      const div=document.createElement('div'); div.className='playerIcon'+(aliveStatus[p]?'':' dead'); div.id='icon_'+p;
+      div.innerHTML=`<img src="${data[p].icon}"><div>${p}</div><div class="coStamp" id="co_${p}" style="display:${data[p].co?'block':'none'}">CO</div>`;
       div.onclick=()=>castVote(p);
       document.getElementById('playerBar').appendChild(div);
     }
@@ -109,15 +108,21 @@ function castVote(target){
 
 // --- メッセージ送信 ---
 function sendMessage(){
-  const msg=document.getElementById("msg").value.trim(); if(!msg)return;
-  db.ref('rooms/'+roomId+'/logs').push({sender:playerName,msg:msg,time:Date.now()});
+  const msg=document.getElementById("msg").value.trim(); if(!msg) return;
+  db.ref('rooms/'+roomId+'/logs').push({sender:playerName,msg,time:Date.now()});
   document.getElementById("msg").value='';
 }
 db.ref('rooms/'+roomId+'/logs').on('child_added',snap=>{
-  const data=snap.val(); const logView=document.getElementById("logView");
-  const div=document.createElement("div"); div.className=(data.sender===playerName)?'bubble self':'bubble other';
-  div.innerHTML=`<b>${data.sender}</b>: ${data.msg}`; logView.appendChild(div); logView.scrollTop=logView.scrollHeight;
+  const data=snap.val();
+  const div=document.createElement("div");
+  div.className=(data.sender===playerName)?'bubble self':'bubble other';
+  div.innerHTML=`<b>${data.sender}</b>: ${data.msg}`;
+  const logView=document.getElementById("logView"); logView.appendChild(div); logView.scrollTop=logView.scrollHeight;
 });
+
+// --- 戦績 ---
+function showStats(){document.getElementById("statsPopup").style.display="block";}
+function closeStats(){document.getElementById("statsPopup").style.display="none";}
 
 // --- 勝利判定 ---
 function checkVictory(){
@@ -127,17 +132,11 @@ function checkVictory(){
     if(roles[p]=='wolf') aliveWolves++;
     else aliveVillagers++;
   }
-  if(aliveWolves>=aliveVillagers) endGame('wolf');
-  if(aliveWolves===0) endGame('villager');
+  if(aliveWolves>=aliveVillagers) alert('人狼勝利！');
+  if(aliveWolves===0) alert('村人勝利！');
 }
 
-// --- ゲーム終了 ---
-function endGame(winner){
-  alert(winner==='wolf'?'人狼勝利！':'村人勝利！');
-  // 戦績更新やリセットはここで処理
-}
-
-// --- 初期参加 ---
+// 初期参加
 joinRoom();
 </script>
 </body>
