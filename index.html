@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>オンライン人狼</title>
+  <title>オンライン人狼ジャッジメント風</title>
 
   <!-- スマホ対応 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +13,6 @@
 
   <!-- CSS -->
   <style>
-    /* 全体 */
     body {
       background: #111;
       color: white;
@@ -23,12 +22,12 @@
       padding: 0;
     }
 
-    /* ゲーム画面ラッパー */
+    /* ゲーム全体ラッパー */
     .game-wrapper {
       max-width: 600px;
       margin: 0 auto;
-      text-align: center;
       padding: 20px;
+      text-align: center;
     }
 
     h1 {
@@ -45,7 +44,7 @@
       font-size: 16px;
       padding: 12px;
       margin: 5px 0;
-      width: 90%; /* 画面幅に合わせる */
+      width: 90%;
       box-sizing: border-box;
       border: none;
       border-radius: 8px;
@@ -78,41 +77,39 @@
       text-align: left;
     }
 
-    /* モバイルでボタン横並びにする場合 */
-    @media (min-width: 400px) {
-      .room-buttons {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-      }
+    /* ルーム作成・参加ボタン横並び */
+    .room-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
 
-      .room-buttons button {
-        width: auto;
-        flex: 1;
-      }
+    .room-buttons button {
+      flex: 1;
+      min-width: 100px;
     }
   </style>
 
-  <link rel="manifest" href="manifest.json">
 </head>
 <body>
 
   <div class="game-wrapper">
-    <h1>オンライン人狼</h1>
+    <h1>オンライン人狼ジャッジメント風</h1>
 
     <!-- ルーム作成・参加 -->
     <input id="roomId" placeholder="ルームID">
     <div class="room-buttons">
-      <button onclick="createRoom()">作成</button>
-      <button onclick="joinRoom()">参加</button>
+      <button onclick="createRoom()">ルーム作成</button>
+      <button onclick="joinRoom()">ルーム参加</button>
     </div>
 
     <!-- 役職表示 -->
-    <h2 id="role"></h2>
+    <h2 id="role">役職: まだ未決定</h2>
 
     <!-- プレイヤー表示 -->
-    <h3>プレイヤー</h3>
-    <div id="players"></div>
+    <h3>プレイヤー一覧</h3>
+    <div id="players">まだ誰も参加していません</div>
 
     <!-- チャット -->
     <h3>チャット</h3>
@@ -121,9 +118,63 @@
     <button onclick="send()">送信</button>
   </div>
 
-  <script type="module">
-    // ここにJSを全部コピペ
-    // 例: createRoom(), joinRoom(), send()など
+  <!-- JS（簡易オンライン雛形） -->
+  <script>
+    // プレイヤー情報
+    const players = [];
+    let role = "未決定";
+
+    function createRoom() {
+      const roomId = document.getElementById("roomId").value.trim();
+      if(!roomId) {
+        alert("ルームIDを入力してください");
+        return;
+      }
+      alert(`ルーム作成: ${roomId}`);
+      // 簡易表示用
+      players.length = 0; // リセット
+      updatePlayers();
+    }
+
+    function joinRoom() {
+      const roomId = document.getElementById("roomId").value.trim();
+      if(!roomId) {
+        alert("ルームIDを入力してください");
+        return;
+      }
+      const playerName = prompt("プレイヤー名を入力してください") || "匿名";
+      players.push(playerName);
+      alert(`${playerName} がルーム ${roomId} に参加`);
+      updatePlayers();
+    }
+
+    function updatePlayers() {
+      const playersDiv = document.getElementById("players");
+      if(players.length === 0) {
+        playersDiv.textContent = "まだ誰も参加していません";
+      } else {
+        playersDiv.innerHTML = players.map(p => `<p>${p}</p>`).join("");
+      }
+    }
+
+    function send() {
+      const msgInput = document.getElementById("msg");
+      const msg = msgInput.value.trim();
+      if(msg === "") return;
+      const chat = document.getElementById("chat");
+      chat.innerHTML += `<p>${msg}</p>`;
+      chat.scrollTop = chat.scrollHeight;
+      msgInput.value = "";
+    }
+
+    // 役職決定（簡易ランダム）
+    function assignRoles() {
+      const roles = ["村人", "人狼", "占い師", "霊能者", "狂人"];
+      if(players.length === 0) return;
+      const index = Math.floor(Math.random() * roles.length);
+      role = roles[index];
+      document.getElementById("role").textContent = `役職: ${role}`;
+    }
   </script>
 
 </body>
