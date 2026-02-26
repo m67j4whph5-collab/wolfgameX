@@ -231,3 +231,44 @@ animateFog();
 </script>
 </body>
 </html>
+
+#logView{
+  background: rgba(0,0,0,0.7);
+  padding:10px;
+  border-radius:6px;
+  max-height:70vh; /* ログを画面70%で固定 */
+  overflow-y:auto;
+  font-size:14px; /* 小さめ文字 */
+  width:95%;
+  margin:0 auto;
+}
+
+#inputBar{
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 95%;
+  display:flex;
+  background: rgba(0,0,0,0.7);
+  padding:5px;
+  border-radius:10px 10px 0 0;
+}
+
+#inputBar input{
+  flex:1;
+  padding:8px;
+  border-radius:6px;
+  border:none;
+  font-size:14px; /* 小さめ文字 */
+}
+
+#inputBar button{
+  padding:8px;
+  margin-left:3px;
+  border-radius:6px;
+  border:none;
+  background:#555;
+  color:white;
+  font-size:14px; /* 小さめ文字 */
+}
