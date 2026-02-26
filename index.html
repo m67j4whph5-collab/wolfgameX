@@ -5,120 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>オンライン人狼ジャッジメント 完全版</title>
 <style>
-/* 全体スタイル */
-body{
-  margin:0; padding:0;
-  font-family:sans-serif;
-  color:white;
-  overflow:hidden;
-  background:#0d1b2a;
-  position:relative;
-}
-
-/* 背景霧・月夜 */
-#fogCanvas{
-  position:fixed;
-  top:0; left:0;
-  width:100%; height:100%;
-  z-index:-1;
-  pointer-events:none;
-}
+/* 全体設定 */
+body{margin:0; padding:0; font-family:sans-serif; color:white; overflow:hidden; background:#0d1b2a;}
+canvas#fogCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;}
 
 /* ホーム画面 */
-#welcomeScreen{
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-  text-align:center;
-  padding:20px;
-  background: rgba(0,0,0,0.25);
-  backdrop-filter: blur(5px);
-}
-#welcomeScreen h1{
-  font-size:28px;
-  margin-bottom:10px;
-  text-shadow:2px 2px 4px #000;
-}
-#welcomeScreen p{
-  font-size:16px;
-  margin-bottom:15px;
-}
-#welcomeScreen input{
-  width:80%;
-  padding:8px;
-  margin:5px;
-  border-radius:6px;
-  border:none;
-  font-size:16px;
-}
-#welcomeScreen button{
-  padding:10px 15px;
-  margin:5px;
-  border:none;
-  border-radius:6px;
-  background:#444;
-  color:white;
-  font-size:16px;
-  cursor:pointer;
-  box-shadow:2px 2px 5px #000;
-}
+#welcomeScreen{display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; text-align:center; padding:20px; background: rgba(0,0,0,0.25); backdrop-filter: blur(5px);}
+#welcomeScreen h1{font-size:28px; margin-bottom:10px; text-shadow:2px 2px 4px #000;}
+#welcomeScreen p{font-size:16px; margin-bottom:15px;}
+#welcomeScreen input{width:80%; padding:10px; margin:5px; border-radius:6px; border:none; font-size:16px;}
+#welcomeScreen button{padding:10px 15px; margin:5px; border:none; border-radius:6px; background:#444; color:white; font-size:16px; cursor:pointer; box-shadow:2px 2px 5px #000;}
 #welcomeScreen button:hover{background:#666;}
-#recentStats{
-  margin-top:15px;
-  font-size:14px;
-  width:90%;
-  max-width:400px;
-  text-align:left;
-  background: rgba(0,0,0,0.6);
-  padding:10px;
-  border-radius:6px;
-}
+#recentStats{margin-top:15px; font-size:14px; width:90%; max-width:400px; text-align:left; background: rgba(0,0,0,0.6); padding:10px; border-radius:6px;}
 
 /* ゲーム画面 */
 .wrapper{max-width:500px; margin:0 auto; padding:10px; background: rgba(0,0,0,0.25); backdrop-filter:blur(5px); border-radius:10px; position:relative;}
 #infoBar{font-size:12px; display:flex; justify-content:space-between; margin-bottom:5px;}
 #turnTimer{margin-top:3px;font-size:12px;text-align:center;}
-
-/* ログチャット */
-#logView,#graveChat{
-  background: rgba(0,0,0,0.7);
-  padding:10px; border-radius:6px;
-  max-height:70vh; min-height:70vh;
-  overflow-y:auto;
-  font-size:14px; line-height:1.4;
-  width:95%; margin:0 auto;
-}
+#logView,#graveChat{background: rgba(0,0,0,0.7); padding:10px; border-radius:6px; max-height:70vh; min-height:70vh; overflow-y:auto; font-size:14px; line-height:1.4; width:95%; margin:0 auto;}
 #graveChat{display:none;}
-
-/* チャットバブル */
 .bubble{max-width:85%; margin:4px 0; padding:6px 10px; border-radius:15px; clear:both; display:inline-block; word-wrap:break-word;}
 .self{background:#4a90e2;color:white;float:right;text-align:right;}
 .other{background:#333;color:white;float:left;text-align:left;}
-
-/* タブ切替 */
 #tabs{margin-top:5px;}
 #tabs button{padding:5px 8px;margin:2px;font-size:14px;border:none;border-radius:6px;background:#444;color:white;}
 #tabs button.active{background:#666;}
-
-/* 入力バー固定 */
-#inputBar{
-  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
-  width:95%; display:flex; background: rgba(0,0,0,0.7);
-  padding:5px; border-radius:10px 10px 0 0; z-index:1000;
-}
+#inputBar{position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:95%; display:flex; background: rgba(0,0,0,0.7); padding:5px; border-radius:10px 10px 0 0; z-index:1000;}
 #inputBar input{flex:1; padding:8px; border-radius:6px; border:none; font-size:16px;}
 #inputBar button{padding:8px; margin-left:3px; border-radius:6px; border:none; background:#555; color:white; font-size:14px;}
-
-/* 投票・夜行動ボタン */
 #votes,#nightActions{display:none;margin-top:5px;width:95%;margin:0 auto;}
 button.voteBtn, button.nightBtn{margin:2px; padding:8px 10px; border-radius:6px; border:none; background:#444; color:white;}
 button.voteBtn:hover, button.nightBtn:hover{background:#666;}
+#playerList{display:flex; flex-wrap:wrap; justify-content:center; margin-top:10px;}
+.playerIcon{position:relative; margin:5px; text-align:center;}
+.playerIcon img{width:50px; height:50px; border-radius:50%;}
+.coStamp{position:absolute; top:-10px; right:-10px; font-size:14px; color:yellow; font-weight:bold; display:none;}
 
 /* 戦績ポップアップ */
-#statsPopup{display:none;position:fixed;top:10%;left:50%;transform:translateX(-50%);
-  background:rgba(0,0,0,0.85); padding:15px; border-radius:10px; color:white; z-index:1000;}
+#statsPopup{display:none;position:fixed;top:10%;left:50%;transform:translateX(-50%); background:rgba(0,0,0,0.85); padding:15px; border-radius:10px; color:white; z-index:1000;}
 #statsPopup table{width:100%; text-align:left;}
 #statsPopup button{margin-top:5px;padding:5px;border:none;background:#444;color:white;border-radius:6px;}
 </style>
@@ -133,7 +57,8 @@ button.voteBtn:hover, button.nightBtn:hover{background:#666;}
 <p>友達と村を救え！人狼を見破れ！</p>
 <input id="roomId" placeholder="ルームID">
 <input id="playerName" placeholder="名前">
-<button onclick="startGame()">ルーム作成/参加</button>
+<input id="expectedPlayers" placeholder="参加予定人数" type="number" min="5">
+<button onclick="joinRoom()">参加／待機</button>
 <button onclick="toggleBGM()">BGM ON/OFF</button>
 <button onclick="showStats()">戦績を見る</button>
 <div id="recentStats">
@@ -159,11 +84,13 @@ button.voteBtn:hover, button.nightBtn:hover{background:#666;}
   <button class="active" onclick="showTab('logView')">生存者チャット</button>
   <button onclick="showTab('graveChat')">墓場チャット</button>
 </div>
+<div id="playerList"></div>
 <div id="votes"></div>
 <div id="nightActions"></div>
 <div id="inputBar">
   <input id="msg" placeholder="盛り上がろう！">
   <button onclick="sendMessage()">送信</button>
+  <button onclick="coStamp()">CO</button>
 </div>
 </div>
 
@@ -182,53 +109,73 @@ button.voteBtn:hover, button.nightBtn:hover{background:#666;}
 <script>
 // Firebase初期化
 const firebaseConfig={apiKey:"AIzaSyArrBmwJJdku58WdeAnQ3PeyiL2U2FweJ8",authDomain:"online-wolfgame.firebaseapp.com",databaseURL:"https://online-wolfgame-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"online-wolfgame",storageBucket:"online-wolfgame.storage.app",messagingSenderId:"582158578809",appId:"1:582158578809:web:568851b778ea63813210a8"};
-const app=firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
 
-// グローバル変数
-let roomId='',playerName='',role='',turn='day',turnTime=60,turnExtensionCount=0,maxExtension=7;
+// グローバル
+let roomId='',playerName='',expectedPlayers=0,role='',turn='day',players=[],aliveStatus={},playerIcons={},coStatus={};
 const roles=["村人","人狼","占い師","霊能者","狂人","狩人"];
-let players=[],logs={},aliveStatus={},graveStatus={},nightActions={},votes={};
-let turnTimerId;
 
-// BGM切替
+// BGM
 function toggleBGM(){const bgm=document.getElementById("bgm"); bgm.paused?bgm.play():bgm.pause();}
 
 // タブ切替
 function showTab(tabId){
   document.getElementById("logView").style.display=(tabId==='logView')?'block':'none';
   document.getElementById("graveChat").style.display=(tabId==='graveChat')?'block':'none';
-  const btns=document.querySelectorAll("#tabs button");
-  btns.forEach(b=>b.classList.remove('active'));
-  if(tabId==='logView') btns[0].classList.add('active'); else btns[1].classList.add('active');
+  document.querySelectorAll("#tabs button").forEach(b=>b.classList.remove('active'));
+  if(tabId==='logView') document.querySelectorAll("#tabs button")[0].classList.add('active'); else document.querySelectorAll("#tabs button")[1].classList.add('active');
 }
 
-// ルーム作成/参加
-function startGame(){
+// ルーム参加
+function joinRoom(){
   roomId=document.getElementById("roomId").value.trim();
   playerName=document.getElementById("playerName").value.trim();
-  if(!roomId||!playerName){alert("ルームIDと名前を入力");return;}
+  expectedPlayers=parseInt(document.getElementById("expectedPlayers").value);
+  if(!roomId||!playerName||!expectedPlayers){alert("全て入力してください");return;}
   document.getElementById("welcomeScreen").style.display="none";
   document.getElementById("gameScreen").style.display="block";
   document.getElementById("currentRoom").textContent=roomId;
-  role=roles[Math.floor(Math.random()*roles.length)];
-  document.getElementById("role").textContent=role;
-  // TODO: プレイヤー同期・昼夜ターン・投票・夜行動処理を組み込む
+
+  // プレイヤー情報登録
+  db.ref('rooms/'+roomId+'/players/'+playerName).set({alive:true,role:'未定'});
+  db.ref('rooms/'+roomId+'/players').on('value',snap=>{
+    const data=snap.val(); players=Object.keys(data); aliveStatus={}; playerIcons={}; document.getElementById('playerList').innerHTML='';
+    for(const p of players){aliveStatus[p]=data[p].alive; let ico=Math.floor(Math.random()*6)+1; playerIcons[p]=ico;
+      const div=document.createElement('div'); div.className='playerIcon'; div.id='icon_'+p;
+      div.innerHTML=`<img src="https://via.placeholder.com/50?text=${ico}"><div>${p}</div><div class="coStamp" id="co_${p}">CO</div>`;
+      document.getElementById('playerList').appendChild(div);
+    }
+    if(players.length>=expectedPlayers && !snap.val().gameStarted){startGame();}
+  });
+}
+
+// ゲーム開始（役職ランダム配布、初夜設定）
+function startGame(){
+  db.ref('rooms/'+roomId+'/gameStarted').set(true);
+  let shuffledRoles=[];
+  while(shuffledRoles.length<players.length){
+    shuffledRoles.push(...roles.sort(()=>Math.random()-0.5));
+  }
+  shuffledRoles=shuffledRoles.slice(0,players.length);
+  players.forEach((p,i)=>{db.ref('rooms/'+roomId+'/players/'+p+'/role').set(shuffledRoles[i]);});
+  turn='day'; document.getElementById('turn').textContent=turn;
 }
 
 // チャット送信
 function sendMessage(){
-  const msg=document.getElementById("msg").value.trim(); if(!msg) return;
-  const logView=document.getElementById("logView");
-  const div=document.createElement("div");
-  div.className='bubble self';
-  div.innerHTML=`<b>${playerName}</b>: ${msg}`;
-  logView.appendChild(div);
-  logView.scrollTop=logView.scrollHeight;
+  const msg=document.getElementById("msg").value.trim(); if(!msg)return;
+  db.ref('rooms/'+roomId+'/logs').push({sender:playerName,msg:msg,time:Date.now()});
   document.getElementById("msg").value='';
 }
+db.ref('rooms/'+roomId+'/logs').on('child_added',snap=>{
+  const data=snap.val(); const logView=document.getElementById("logView");
+  const div=document.createElement("div"); div.className=(data.sender===playerName)?'bubble self':'bubble other';
+  div.innerHTML=`<b>${data.sender}</b>: ${data.msg}`; logView.appendChild(div); logView.scrollTop=logView.scrollHeight;
+});
 
-// 戦績ポップアップ
+// COスタンプ
+function coStamp(){document.getElementById('co_'+playerName).style.display='block';}
 function showStats(){document.getElementById("statsPopup").style.display="block";}
 function closeStats(){document.getElementById("statsPopup").style.display="none";}
 </script>
