@@ -5,62 +5,169 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>オンライン人狼ジャッジメント 完全版</title>
 <style>
-body{margin:0;padding:0;font-family:sans-serif;background:linear-gradient(#0d1b2a,#1b263b);color:white;overflow-x:hidden;padding-bottom:60px;}
-.wrapper{max-width:600px;margin:0 auto;padding:10px;background:rgba(0,0,0,0.25);backdrop-filter:blur(5px);border-radius:10px;position:relative;}
-#infoBar{font-size:12px;display:flex;justify-content:space-between;margin-bottom:5px;}
-#logView{background: rgba(0,0,0,0.7); padding:10px; border-radius:6px; max-height:70vh; min-height:70vh; overflow-y:auto; font-size:14px; line-height:1.4; width:95%; margin:0 auto;}
+/* 全体スタイル */
+body{
+  margin:0; padding:0;
+  font-family:sans-serif;
+  color:white;
+  overflow:hidden;
+  background:#0d1b2a;
+  position:relative;
+}
+
+/* 背景霧・月夜 */
+#fogCanvas{
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  z-index:-1;
+  pointer-events:none;
+}
+
+/* ホーム画面 */
+#welcomeScreen{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  text-align:center;
+  padding:20px;
+  background: rgba(0,0,0,0.25);
+  backdrop-filter: blur(5px);
+}
+#welcomeScreen h1{
+  font-size:28px;
+  margin-bottom:10px;
+  text-shadow:2px 2px 4px #000;
+}
+#welcomeScreen p{
+  font-size:16px;
+  margin-bottom:15px;
+}
+#welcomeScreen input{
+  width:80%;
+  padding:8px;
+  margin:5px;
+  border-radius:6px;
+  border:none;
+  font-size:16px;
+}
+#welcomeScreen button{
+  padding:10px 15px;
+  margin:5px;
+  border:none;
+  border-radius:6px;
+  background:#444;
+  color:white;
+  font-size:16px;
+  cursor:pointer;
+  box-shadow:2px 2px 5px #000;
+}
+#welcomeScreen button:hover{background:#666;}
+#recentStats{
+  margin-top:15px;
+  font-size:14px;
+  width:90%;
+  max-width:400px;
+  text-align:left;
+  background: rgba(0,0,0,0.6);
+  padding:10px;
+  border-radius:6px;
+}
+
+/* ゲーム画面 */
+.wrapper{max-width:500px; margin:0 auto; padding:10px; background: rgba(0,0,0,0.25); backdrop-filter:blur(5px); border-radius:10px; position:relative;}
+#infoBar{font-size:12px; display:flex; justify-content:space-between; margin-bottom:5px;}
+#turnTimer{margin-top:3px;font-size:12px;text-align:center;}
+
+/* ログチャット */
+#logView,#graveChat{
+  background: rgba(0,0,0,0.7);
+  padding:10px; border-radius:6px;
+  max-height:70vh; min-height:70vh;
+  overflow-y:auto;
+  font-size:14px; line-height:1.4;
+  width:95%; margin:0 auto;
+}
+#graveChat{display:none;}
+
+/* チャットバブル */
 .bubble{max-width:85%; margin:4px 0; padding:6px 10px; border-radius:15px; clear:both; display:inline-block; word-wrap:break-word;}
 .self{background:#4a90e2;color:white;float:right;text-align:right;}
 .other{background:#333;color:white;float:left;text-align:left;}
+
+/* タブ切替 */
 #tabs{margin-top:5px;}
 #tabs button{padding:5px 8px;margin:2px;font-size:14px;border:none;border-radius:6px;background:#444;color:white;}
 #tabs button.active{background:#666;}
-#inputBar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:95%;display:flex;background: rgba(0,0,0,0.7);padding:5px;border-radius:10px 10px 0 0;}
-#inputBar input{flex:1;padding:8px;border-radius:6px;border:none;font-size:16px;}
-#inputBar button{padding:8px;margin-left:3px;border-radius:6px;border:none;background:#555;color:white;font-size:14px;}
+
+/* 入力バー固定 */
+#inputBar{
+  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+  width:95%; display:flex; background: rgba(0,0,0,0.7);
+  padding:5px; border-radius:10px 10px 0 0; z-index:1000;
+}
+#inputBar input{flex:1; padding:8px; border-radius:6px; border:none; font-size:16px;}
+#inputBar button{padding:8px; margin-left:3px; border-radius:6px; border:none; background:#555; color:white; font-size:14px;}
+
+/* 投票・夜行動ボタン */
 #votes,#nightActions{display:none;margin-top:5px;width:95%;margin:0 auto;}
-button.voteBtn,button.nightBtn{margin:2px;padding:8px 10px;border-radius:6px;border:none;background:#444;color:white;}
-button.voteBtn:hover,button.nightBtn:hover{background:#666;}
-#fogCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;}
-@keyframes highlight {0% { box-shadow: 0 0 0px yellow; } 50% { box-shadow: 0 0 15px yellow; } 100% { box-shadow: 0 0 0px yellow; }}
-.highlight{animation: highlight 1.2s ease-in-out;}
-#statsPopup{display:none;position:fixed;top:10%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);padding:15px;border-radius:10px;color:white;z-index:1000;}
-#statsPopup table{width:100%;text-align:left;}
+button.voteBtn, button.nightBtn{margin:2px; padding:8px 10px; border-radius:6px; border:none; background:#444; color:white;}
+button.voteBtn:hover, button.nightBtn:hover{background:#666;}
+
+/* 戦績ポップアップ */
+#statsPopup{display:none;position:fixed;top:10%;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,0.85); padding:15px; border-radius:10px; color:white; z-index:1000;}
+#statsPopup table{width:100%; text-align:left;}
 #statsPopup button{margin-top:5px;padding:5px;border:none;background:#444;color:white;border-radius:6px;}
-#turnTimer{margin-top:3px;font-size:12px;text-align:center;}
 </style>
 </head>
 <body>
 <audio id="bgm" src="https://www.chosic.com/wp-content/uploads/2021/10/Halloween-Horror-Creepy-Piano.mp3" loop autoplay></audio>
 <canvas id="fogCanvas"></canvas>
 
-<div class="wrapper" id="lobbyScreen">
-<h2>オンライン人狼ジャッジメント 完全版</h2>
+<!-- ホーム画面 -->
+<div id="welcomeScreen">
+<h1>オンライン人狼ジャッジメント 完全版</h1>
+<p>友達と村を救え！人狼を見破れ！</p>
 <input id="roomId" placeholder="ルームID">
 <input id="playerName" placeholder="名前">
 <button onclick="startGame()">ルーム作成/参加</button>
 <button onclick="toggleBGM()">BGM ON/OFF</button>
 <button onclick="showStats()">戦績を見る</button>
+<div id="recentStats">
+<h4>最近の戦績</h4>
+<ul id="statsList">
+<li>プレイヤーA：勝利5回</li>
+<li>プレイヤーB：人狼最多勝利3回</li>
+</ul>
+</div>
 </div>
 
+<!-- ゲーム画面 -->
 <div class="wrapper" id="gameScreen" style="display:none;">
 <div id="infoBar">
-<span>ルーム: <span id="currentRoom"></span></span>
-<span>役職: <span id="role"></span></span>
-<span>昼/夜: <span id="turn"></span></span>
+  <span>ルーム: <span id="currentRoom"></span></span>
+  <span>役職: <span id="role"></span></span>
+  <span>昼/夜: <span id="turn"></span></span>
 </div>
 <div id="turnTimer"></div>
 <div id="logView"></div>
-<div id="tabs"></div>
+<div id="graveChat"></div>
+<div id="tabs">
+  <button class="active" onclick="showTab('logView')">生存者チャット</button>
+  <button onclick="showTab('graveChat')">墓場チャット</button>
+</div>
 <div id="votes"></div>
 <div id="nightActions"></div>
-
 <div id="inputBar">
-<input id="msg" placeholder="盛り上がろう！">
-<button onclick="sendMessage()">送信</button>
+  <input id="msg" placeholder="盛り上がろう！">
+  <button onclick="sendMessage()">送信</button>
 </div>
 </div>
 
+<!-- 戦績ポップアップ -->
 <div id="statsPopup">
 <h3>プレイヤー戦績</h3>
 <table>
@@ -81,45 +188,49 @@ const db=firebase.database();
 // グローバル変数
 let roomId='',playerName='',role='',turn='day',turnTime=60,turnExtensionCount=0,maxExtension=7;
 const roles=["村人","人狼","占い師","霊能者","狂人","狩人"];
-const roleIcons={"村人":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/villager.png","人狼":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/werewolf.png","占い師":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/seer.png","霊能者":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/medium.png","狂人":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/traitor.png","狩人":"https://raw.githubusercontent.com/m67j4whph5-collab/wolfgameX/main/icons/hunter.png"};
 let players=[],logs={},aliveStatus={},graveStatus={},nightActions={},votes={};
 let turnTimerId;
 
 // BGM切替
 function toggleBGM(){const bgm=document.getElementById("bgm"); bgm.paused?bgm.play():bgm.pause();}
 
+// タブ切替
+function showTab(tabId){
+  document.getElementById("logView").style.display=(tabId==='logView')?'block':'none';
+  document.getElementById("graveChat").style.display=(tabId==='graveChat')?'block':'none';
+  const btns=document.querySelectorAll("#tabs button");
+  btns.forEach(b=>b.classList.remove('active'));
+  if(tabId==='logView') btns[0].classList.add('active'); else btns[1].classList.add('active');
+}
+
 // ルーム作成/参加
 function startGame(){
   roomId=document.getElementById("roomId").value.trim();
   playerName=document.getElementById("playerName").value.trim();
   if(!roomId||!playerName){alert("ルームIDと名前を入力");return;}
-  const playerRef=db.ref('rooms/'+roomId+'/players/'+playerName);
-  playerRef.get().then(snap=>{
-    if(snap.exists()){alert("同じ名前が存在");return;}
-    role=roles[Math.floor(Math.random()*roles.length)];
-    playerRef.set({role:role,alive:true,stats:{win:0,lose:0,played:0}}).then(()=>{
-      document.getElementById("lobbyScreen").style.display="none";
-      document.getElementById("gameScreen").style.display="block";
-      document.getElementById("currentRoom").textContent=roomId;
-      document.getElementById("role").textContent=role;
-      setupListeners();
-      initAlive();
-      startTurn();
-    });
-  });
+  document.getElementById("welcomeScreen").style.display="none";
+  document.getElementById("gameScreen").style.display="block";
+  document.getElementById("currentRoom").textContent=roomId;
+  role=roles[Math.floor(Math.random()*roles.length)];
+  document.getElementById("role").textContent=role;
+  // TODO: プレイヤー同期・昼夜ターン・投票・夜行動処理を組み込む
 }
 
-// 占い結果判定（白黒、狂人は白）
-function getDivinationResult(targetRole){
-  return (targetRole==="人狼")?"黒":"白";
-}
-function showDivination(oracleName,targetName,targetRole){
-  if(playerName!==oracleName) return;
-  const result=getDivinationResult(targetRole);
-  addLog("占い結果",targetName,result);
+// チャット送信
+function sendMessage(){
+  const msg=document.getElementById("msg").value.trim(); if(!msg) return;
+  const logView=document.getElementById("logView");
+  const div=document.createElement("div");
+  div.className='bubble self';
+  div.innerHTML=`<b>${playerName}</b>: ${msg}`;
+  logView.appendChild(div);
+  logView.scrollTop=logView.scrollHeight;
+  document.getElementById("msg").value='';
 }
 
-// ここに昼・夜ターン自動切替＋過半数延長＋死亡判定＋墓場チャット＋戦績更新を組み込む
+// 戦績ポップアップ
+function showStats(){document.getElementById("statsPopup").style.display="block";}
+function closeStats(){document.getElementById("statsPopup").style.display="none";}
 </script>
 </body>
 </html>
