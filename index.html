@@ -2,142 +2,138 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>完全自動オンライン人狼</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Werewolf Online</title>
+
 <style>
-body{margin:0;padding:0;font-family:sans-serif;color:white;background:#0d1b2a;overflow:hidden;}
-#playerBar{position:fixed;top:0;left:0;width:100%;background:rgba(0,0,0,0.5);display:flex;flex-wrap:wrap;justify-content:center;align-items:center;padding:5px;z-index:1000;max-height:80px;overflow-y:auto;}
-.playerIcon{position:relative;margin:5px;text-align:center;transition:transform 0.3s;cursor:pointer;}
-.playerIcon img{width:50px;height:50px;border-radius:50%;box-shadow:0 0 8px rgba(0,0,0,0.8);}
-.playerIcon.dead img{opacity:0.4;}
-.coStamp{position:absolute;top:-5px;right:-5px;font-size:14px;color:yellow;font-weight:bold;display:none;text-shadow:0 0 5px #fff;}
-#chatWrapper{position:fixed;top:85px;bottom:80px;width:100%;display:flex;flex-direction:column;align-items:center;}
-#logView,#graveChat{background: rgba(0,0,0,0.7); padding:10px; border-radius:6px; width:95%; max-width:500px; overflow-y:auto; font-size:14px; line-height:1.4; flex:1; margin-bottom:5px;}
-#graveChat{display:none;}
-.bubble{max-width:85%; margin:4px 0; padding:6px 10px; border-radius:15px; word-wrap:break-word;}
-.self{background:#4a90e2;color:white;float:right;text-align:right;}
-.other{background:#333;color:white;float:left;text-align:left;}
-#tabs{margin-bottom:5px;}
-#tabs button{padding:5px 8px;margin:2px;font-size:14px;border:none;border-radius:6px;background:#444;color:white;}
-#tabs button.active{background:#666;}
-#inputBar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:95%;display:flex;background:rgba(0,0,0,0.7);padding:5px;border-radius:10px 10px 0 0;z-index:1000;}
-#inputBar input{flex:1;padding:8px;border-radius:6px;border:none;font-size:16px;}
-#inputBar button{padding:8px;margin-left:3px;border-radius:6px;border:none;background:#555;color:white;font-size:14px;cursor:pointer;}
-#inputBar button:hover{background:#777;}
-#statsPopup{display:none;position:fixed;top:10%;left:50%;transform:translateX(-50%); background:rgba(0,0,0,0.85); padding:15px; border-radius:10px; color:white; z-index:1000;}
-#statsPopup table{width:100%; text-align:left;}
-#statsPopup button{margin-top:5px;padding:5px;border:none;background:#444;color:white;border-radius:6px;}
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:#0b0b0b;
+  color:white;
+}
+
+header{
+  text-align:center;
+  padding:10px;
+  font-size:22px;
+  background:#111;
+}
+
+#chat{
+  height:55vh;
+  overflow-y:auto;
+  padding:10px;
+}
+
+.msg{
+  margin:6px 0;
+}
+
+#bottom{
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:#111;
+  padding:8px;
+  display:flex;
+}
+
+input{
+  flex:1;
+  font-size:16px;
+}
+
+button{
+  font-size:16px;
+}
 </style>
 </head>
+
 <body>
 
-<div id="playerBar"></div>
+<header>🐺 Werewolf Online</header>
 
-<div id="chatWrapper">
-<div id="tabs">
-  <button class="active" onclick="showTab('logView')">生存者チャット</button>
-  <button onclick="showTab('graveChat')">墓場チャット</button>
-</div>
-<div id="logView"></div>
-<div id="graveChat"></div>
-</div>
+<div id="info"></div>
+<div id="chat"></div>
 
-<div id="inputBar">
-<input id="msg" placeholder="チャットを入力">
-<button onclick="sendMessage()">送信</button>
-<button onclick="toggleCO()">CO</button>
+<div id="bottom">
+<input id="text" placeholder="メッセージ">
+<button onclick="send()">送信</button>
 </div>
 
-<div id="statsPopup">
-<h3>プレイヤー戦績</h3>
-<table>
-<thead><tr><th>名前</th><th>勝利</th><th>敗北</th><th>プレイ回数</th></tr></thead>
-<tbody></tbody>
-</table>
-<button onclick="closeStats()">閉じる</button>
-</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded, set } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script>
-// --- Firebase設定 ---
-const firebaseConfig={apiKey:"YOUR_API_KEY",authDomain:"YOUR_AUTH_DOMAIN",databaseURL:"YOUR_DB_URL",projectId:"YOUR_PROJECT_ID",storageBucket:"YOUR_BUCKET",messagingSenderId:"YOUR_SENDER_ID",appId:"YOUR_APP_ID"};
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
+const firebaseConfig = {
+  apiKey: "AIzaSyAoq3s75YB0zNAGJvPxR25L-iZFWjjDIAI",
+  authDomain: "werewolf-online-38465.firebaseapp.com",
+  databaseURL: "https://werewolf-online-38465-default-rtdb.firebaseio.com",
+  projectId: "werewolf-online-38465",
+  storageBucket: "werewolf-online-38465.appspot.com",
+  messagingSenderId: "388144035410",
+  appId: "1:388144035410:web:d8d4b573c1ffa5e7d9d18b"
+};
 
-// --- 初期設定 ---
-let roomId='room1';
-let playerName='Player'+Math.floor(Math.random()*100);
-let players=[],aliveStatus={},roles={},coStatus={},votes={},turn='day',dayTime=240;
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-// --- タブ切替 ---
-function showTab(tabId){
-  document.getElementById("logView").style.display=(tabId==='logView')?'block':'none';
-  document.getElementById("graveChat").style.display=(tabId==='graveChat')?'block':'none';
-  document.querySelectorAll("#tabs button").forEach(b=>b.classList.remove('active'));
-  document.querySelector(`#tabs button[onclick*="${tabId}"]`).classList.add('active');
+// ルームID
+const roomId =
+new URLSearchParams(location.search).get("room")
+|| Math.random().toString(36).slice(2,7);
+
+document.getElementById("info").innerHTML =
+"ルームID: "+roomId;
+
+// 名前
+let name = localStorage.getItem("name");
+if(!name){
+  name = prompt("名前を入力");
+  localStorage.setItem("name", name);
 }
 
-// --- 参加同期 ---
-function joinRoom(){
-  db.ref('rooms/'+roomId+'/players/'+playerName).set({alive:true,icon:'wolf.png',co:false,role:'未定',win:0,lose:0,count:0});
-  db.ref('rooms/'+roomId+'/players').on('value',snap=>{
-    const data=snap.val(); players=Object.keys(data); document.getElementById('playerBar').innerHTML='';
-    for(const p of players){
-      aliveStatus[p]=data[p].alive; roles[p]=data[p].role; coStatus[p]=data[p].co;
-      const div=document.createElement('div'); div.className='playerIcon'+(aliveStatus[p]?'':' dead'); div.id='icon_'+p;
-      div.innerHTML=`<img src="${data[p].icon}"><div>${p}</div><div class="coStamp" id="co_${p}" style="display:${data[p].co?'block':'none'}">CO</div>`;
-      div.onclick=()=>castVote(p);
-      document.getElementById('playerBar').appendChild(div);
-    }
-  });
-}
+// 参加登録
+const playerRef =
+ref(db, "rooms/"+roomId+"/players/"+name);
 
-// --- CO ---
-function toggleCO(){
-  const coElem=document.getElementById('co_'+playerName);
-  coElem.style.display=(coElem.style.display==='none')?'block':'none';
-  db.ref('rooms/'+roomId+'/players/'+playerName+'/co').set(coElem.style.display==='block');
-}
-
-// --- 投票 ---
-function castVote(target){
-  if(!votes[target]) votes[target]=0;
-  votes[target]+=1;
-}
-
-// --- メッセージ送信 ---
-function sendMessage(){
-  const msg=document.getElementById("msg").value.trim(); if(!msg) return;
-  db.ref('rooms/'+roomId+'/logs').push({sender:playerName,msg,time:Date.now()});
-  document.getElementById("msg").value='';
-}
-db.ref('rooms/'+roomId+'/logs').on('child_added',snap=>{
-  const data=snap.val();
-  const div=document.createElement("div");
-  div.className=(data.sender===playerName)?'bubble self':'bubble other';
-  div.innerHTML=`<b>${data.sender}</b>: ${data.msg}`;
-  const logView=document.getElementById("logView"); logView.appendChild(div); logView.scrollTop=logView.scrollHeight;
+set(playerRef, {
+  name,
+  join: Date.now()
 });
 
-// --- 戦績 ---
-function showStats(){document.getElementById("statsPopup").style.display="block";}
-function closeStats(){document.getElementById("statsPopup").style.display="none";}
+// チャット送信
+window.send = ()=>{
+  const t = document.getElementById("text");
+  if(!t.value) return;
 
-// --- 勝利判定 ---
-function checkVictory(){
-  let aliveWolves=0,aliveVillagers=0;
-  for(const p of players){
-    if(!aliveStatus[p]) continue;
-    if(roles[p]=='wolf') aliveWolves++;
-    else aliveVillagers++;
-  }
-  if(aliveWolves>=aliveVillagers) alert('人狼勝利！');
-  if(aliveWolves===0) alert('村人勝利！');
-}
+  push(
+    ref(db, "rooms/"+roomId+"/chat"),
+    {
+      name,
+      text:t.value,
+      time:Date.now()
+    }
+  );
 
-// 初期参加
-joinRoom();
+  t.value="";
+};
+
+// チャット受信
+onChildAdded(
+ref(db, "rooms/"+roomId+"/chat"),
+snap=>{
+  const d = snap.val();
+  const div = document.createElement("div");
+  div.className="msg";
+  div.innerHTML =
+  "<b>"+d.name+"</b>: "+d.text;
+  document.getElementById("chat")
+  .appendChild(div);
+});
 </script>
+
 </body>
 </html>
