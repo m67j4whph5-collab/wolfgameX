@@ -104,6 +104,27 @@ set(playerRef, {
   join: Date.now()
 });
 
+// 初期フェーズ作成（存在しない場合）
+import { get, child } from 
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const phaseRef = ref(db, "rooms/"+roomId+"/phase");
+
+get(phaseRef).then(snapshot=>{
+  if(!snapshot.exists()){
+    set(phaseRef,"lobby");
+  }
+});
+
+import { onValue } from 
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+onValue(phaseRef,(snap)=>{
+  const phase = snap.val();
+  document.getElementById("info").innerHTML =
+  "ルームID: "+roomId+" / 状態: "+phase;
+});
+
 // チャット送信
 window.send = ()=>{
   const t = document.getElementById("text");
