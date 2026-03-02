@@ -1,315 +1,171 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>人狼オンライン GOD</title>
-
-<style>
-*{box-sizing:border-box;}
-body{
-margin:0;
-background:#0f0f0f;
-color:white;
-font-family:sans-serif;
-display:flex;
-justify-content:center;
-}
-
-.wrapper{
-width:100%;
-max-width:1200px;
-padding:10px;
-}
-
-h1{text-align:center;}
-
-input,button{
-padding:10px;
-margin:5px;
-border-radius:8px;
-border:none;
-}
-
-button{
-background:#ff3d3d;
-color:white;
-font-weight:bold;
-}
-
-.panel{
-background:#1a1a1a;
-padding:10px;
-border-radius:12px;
-margin:10px 0;
-}
-
-.flex{
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-}
-
-.player{
-padding:5px;
-background:#222;
-border-radius:6px;
-margin:3px;
-}
-
-.dead{opacity:0.3;}
-
-.chat{
-height:200px;
-overflow:auto;
-background:#111;
-padding:5px;
-border-radius:8px;
-}
-
-@media(min-width:768px){
-.layout{
-display:grid;
-grid-template-columns:2fr 1fr;
-gap:15px;
-}
-}
-</style>
-</head>
-
-<body>
-<div class="wrapper">
-
-<h1>🐺 人狼オンライン GOD</h1>
-
-<div id="join" class="panel">
-<input id="room" placeholder="ルームID">
-<input id="name" placeholder="名前">
-<button onclick="join()">参加</button>
-</div>
-
-<div id="game" style="display:none;">
-
-<div class="layout">
-
-<div>
-<div class="panel">
-<p id="phase"></p>
-<p id="role"></p>
-<p>💰 コイン: <span id="coin">0</span></p>
-<p>🏆 レート: <span id="rate">1000</span></p>
-</div>
-
-<div class="panel">
-<h3>プレイヤー</h3>
-<div id="players" class="flex"></div>
-</div>
-
-<div class="panel">
-<h3>行動</h3>
-<div id="action"></div>
-</div>
-
-<div class="panel">
-<h3>チャット</h3>
-<div id="chat" class="chat"></div>
-<input id="msg">
-<button onclick="send()">送信</button>
-</div>
-</div>
-
-<div>
-<div class="panel">
-<h3>🎰 ガチャ</h3>
-<button onclick="gacha()">回す (100コイン)</button>
-<p id="skin"></p>
-</div>
-
-<div class="panel">
-<button onclick="start()">ゲーム開始</button>
-</div>
-</div>
-
-</div>
-</div>
-
 <script type="module">
-import { initializeApp } from 
-"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import {
-getDatabase,ref,set,push,onValue,get,update
-} from 
-"https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-const firebaseConfig={
-apiKey:"AIzaSyAoq3s75YB0zNAGJvPxR25L-iZFWjjDIAI",
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, set, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+apiKey: "AIzaSyAoq3s75YB0zNAGJvPxR25L-iZFWjjDIAI",
+authDomain: "werewolf-online-38465.firebaseapp.com",
 databaseURL:"https://werewolf-online-38465-default-rtdb.firebaseio.com/",
-projectId:"werewolf-online-38465"
+projectId: "werewolf-online-38465"
 };
 
-const app=initializeApp(firebaseConfig);
-const db=getDatabase(app);
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-let room="",name="",myRole="";
-let coin=500;
-let rate=1000;
+let playerId = localStorage.playerId || Math.random().toString(36).slice(2);
+localStorage.playerId = playerId;
 
-function join(){
-room=room.value;
-name=name.value;
+let roomId;
+let role;
+let alive=true;
 
-set(ref(db,"rooms/"+room+"/players/"+name),{
-alive:true,
-role:"",
-coin:coin,
-rate:rate
+// 画面切り替え
+function show(id){
+document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+}
+
+// 参加
+window.joinRoom=()=>{
+roomId=document.getElementById("room").value;
+const name=document.getElementById("name").value;
+
+set(ref(db,`rooms/${roomId}/players/${playerId}`),{
+name,alive:true
 });
 
-join.style.display="none";
-game.style.display="block";
-watch();
+listenRoom();
+show("roomScreen");
+};
+
+// プレイヤー同期
+function listenRoom(){
+onValue(ref(db,`rooms/${roomId}/players`),(snap)=>{
+const data=snap.val()||{};
+const div=document.getElementById("players");
+div.innerHTML="";
+Object.entries(data).forEach(([id,p])=>{
+div.innerHTML+=`<div class="player">${p.name}</div>`;
+});
+});
 }
 
-function watch(){
-onValue(ref(db,"rooms/"+room),snap=>{
-const d=snap.val();
-if(!d)return;
+// ゲーム開始
+window.startGame=()=>{
+assignRoles();
+set(ref(db,`rooms/${roomId}/day`),1);
+set(ref(db,`rooms/${roomId}/phase`),"day");
+show("game");
+listenGame();
+};
 
-phase.innerText="フェーズ: "+d.phase;
+// 役職配布
+function assignRoles(){
+onValue(ref(db,`rooms/${roomId}/players`),(snap)=>{
+const players=snap.val();
+let ids=Object.keys(players);
 
-if(d.players){
-let html="",act="";
-for(let p in d.players){
-let pl=d.players[p];
-let cls=pl.alive?"player":"player dead";
-html+=`<div class="${cls}">${p}</div>`;
+let wolves=Math.max(1,Math.floor(ids.length/4));
 
-if(p===name){
-myRole=pl.role;
-role.innerText="役職: "+myRole;
-coin=pl.coin||coin;
-rate=pl.rate||rate;
-document.getElementById("coin").innerText=coin;
-document.getElementById("rate").innerText=rate;
+ids.sort(()=>Math.random()-0.5);
+
+ids.forEach((id,i)=>{
+let r="villager";
+if(i<wolves) r="wolf";
+if(i===wolves) r="seer";
+
+update(ref(db,`rooms/${roomId}/players/${id}`),{role:r});
+if(id===playerId) role=r;
+});
+},{onlyOnce:true});
+}
+
+// ゲーム同期
+function listenGame(){
+
+// phase
+onValue(ref(db,`rooms/${roomId}/phase`),(snap)=>{
+document.getElementById("phase").textContent=snap.val();
+});
+
+// 投票
+onValue(ref(db,`rooms/${roomId}/votes`),(snap)=>{
+checkVote();
+});
+
+// 夜
+onValue(ref(db,`rooms/${roomId}/nightKill`),(snap)=>{
+if(snap.exists()) nextDay();
+});
+
+}
+
+// 投票
+function checkVote(){
+onValue(ref(db,`rooms/${roomId}/votes`),(snap)=>{
+const votes=snap.val()||{};
+let count={};
+
+Object.values(votes).forEach(v=>{
+count[v]=(count[v]||0)+1;
+});
+
+let max=0,target=null;
+for(let k in count){
+if(count[k]>max){
+max=count[k];
+target=k;
 }
 }
-players.innerHTML=html;
+
+if(target){
+update(ref(db,`rooms/${roomId}/players/${target}`),{alive:false});
+set(ref(db,`rooms/${roomId}/phase`),"night");
 }
 });
 }
 
-function send(){
-push(ref(db,"rooms/"+room+"/chat"),{
-name:name,
-msg:msg.value
-});
-msg.value="";
+// 夜キル
+window.kill=(id)=>{
+if(role!=="wolf") return;
+set(ref(db,`rooms/${roomId}/nightKill`),id);
+update(ref(db,`rooms/${roomId}/players/${id}`),{alive:false});
+};
+
+// 次の日
+function nextDay(){
+set(ref(db,`rooms/${roomId}/votes`),null);
+set(ref(db,`rooms/${roomId}/nightKill`),null);
+
+onValue(ref(db,`rooms/${roomId}/day`),(snap)=>{
+let d=snap.val()+1;
+set(ref(db,`rooms/${roomId}/day`),d);
+set(ref(db,`rooms/${roomId}/phase`),"day");
+checkWin();
+},{onlyOnce:true});
 }
 
-function start(){
-get(ref(db,"rooms/"+room+"/players")).then(s=>{
-let names=Object.keys(s.val());
-let roles=["人狼","人狼","占い師"];
-while(roles.length<names.length)roles.push("市民");
-roles.sort(()=>Math.random()-0.5);
+// 勝敗
+function checkWin(){
+onValue(ref(db,`rooms/${roomId}/players`),(snap)=>{
+const players=snap.val();
 
-names.forEach((n,i)=>{
-update(ref(db,"rooms/"+room+"/players/"+n),{
-role:roles[i]
+let wolf=0,vill=0;
+
+Object.values(players).forEach(p=>{
+if(!p.alive) return;
+if(p.role==="wolf") wolf++;
+else vill++;
 });
-});
-set(ref(db,"rooms/"+room+"/phase"),"day");
-});
+
+if(wolf>=vill){
+alert("人狼勝利");
 }
-
-function gacha(){
-if(coin<100){alert("コイン不足");return;}
-coin-=100;
-let skins=["🔥炎狼","❄氷狼","⚡雷狼","👑王狼"];
-let getSkin=skins[Math.floor(Math.random()*skins.length)];
-skin.innerText="獲得: "+getSkin;
-
-update(ref(db,"rooms/"+room+"/players/"+name),{
-coin:coin,
-skin:getSkin
-});
+if(wolf===0){
+alert("村勝利");
 }
-
-window.join=join;
-window.send=send;
-window.start=start;
-window.gacha=gacha;
+},{onlyOnce:true});
+}
 
 </script>
-</body>
-</html>
-
-function checkWin(){
-get(ref(db,"rooms/"+room+"/players")).then(s=>{
-let players=s.val();
-let wolves=0,citizens=0;
-
-for(let p in players){
-if(players[p].alive){
-if(players[p].role==="人狼") wolves++;
-else citizens++;
-}
-}
-
-if(wolves===0) endGame("市民");
-if(wolves>=citizens) endGame("人狼");
-});
-}
-
-function endGame(winner){
-alert("勝者: "+winner);
-
-get(ref(db,"rooms/"+room+"/players/"+name)).then(s=>{
-let me=s.val();
-let win = (me.role==="人狼" && winner==="人狼") ||
-          (me.role!=="人狼" && winner==="市民");
-
-let newRate = me.rate + (win?30:-20);
-let newCoin = me.coin + (win?200:50);
-
-update(ref(db,"rooms/"+room+"/players/"+name),{
-rate:newRate,
-coin:newCoin
-});
-});
-}
-
-<div class="panel">
-<h3>🏆 ランキング</h3>
-<div id="ranking"></div>
-</div>
-
-function showRanking(){
-get(ref(db,"rooms/"+room+"/players")).then(s=>{
-let arr=[];
-let data=s.val();
-for(let p in data){
-arr.push({name:p,rate:data[p].rate||1000});
-}
-arr.sort((a,b)=>b.rate-a.rate);
-
-let html="";
-arr.forEach((p,i)=>{
-html+=`${i+1}位 ${p.name} (${p.rate})<br>`;
-});
-ranking.innerHTML=html;
-});
-}
-
-{
-"name": "人狼人狼オンライン",
-"short_name": "人狼",
-"start_url": "./index.html",
-"display": "standalone",
-"background_color": "#0f0f0f",
-"theme_color": "#ff3d3d",
-"icons": []
-}
-
-<link rel="manifest" href="manifest.json">
