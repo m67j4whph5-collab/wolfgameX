@@ -1,160 +1,286 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Werewolf Online</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>人狼オンライン GOD</title>
 
 <style>
+*{box-sizing:border-box;}
 body{
-  margin:0;
-  font-family:sans-serif;
-  background:#0b0b0b;
-  color:white;
+margin:0;
+background:#0f0f0f;
+color:white;
+font-family:sans-serif;
+display:flex;
+justify-content:center;
 }
 
-header{
-  text-align:center;
-  padding:10px;
-  font-size:22px;
-  background:#111;
+.wrapper{
+width:100%;
+max-width:1200px;
+padding:10px;
 }
 
-#chat{
-  height:55vh;
-  overflow-y:auto;
-  padding:10px;
-}
+h1{text-align:center;}
 
-.msg{
-  margin:6px 0;
-}
-
-#bottom{
-  position:fixed;
-  bottom:0;
-  width:100%;
-  background:#111;
-  padding:8px;
-  display:flex;
-}
-
-input{
-  flex:1;
-  font-size:16px;
+input,button{
+padding:10px;
+margin:5px;
+border-radius:8px;
+border:none;
 }
 
 button{
-  font-size:16px;
+background:#ff3d3d;
+color:white;
+font-weight:bold;
+}
+
+.panel{
+background:#1a1a1a;
+padding:10px;
+border-radius:12px;
+margin:10px 0;
+}
+
+.flex{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+.player{
+padding:5px;
+background:#222;
+border-radius:6px;
+margin:3px;
+}
+
+.dead{opacity:0.3;}
+
+.chat{
+height:200px;
+overflow:auto;
+background:#111;
+padding:5px;
+border-radius:8px;
+}
+
+@media(min-width:768px){
+.layout{
+display:grid;
+grid-template-columns:2fr 1fr;
+gap:15px;
+}
 }
 </style>
 </head>
 
 <body>
+<div class="wrapper">
 
-<header>🐺 Werewolf Online</header>
+<h1>🐺 人狼オンライン GOD</h1>
 
-<div id="info"></div>
-<div id="chat"></div>
+<div id="join" class="panel">
+<input id="room" placeholder="ルームID">
+<input id="name" placeholder="名前">
+<button onclick="join()">参加</button>
+</div>
 
-<div id="bottom">
-<input id="text" placeholder="メッセージ">
+<div id="game" style="display:none;">
+
+<div class="layout">
+
+<div>
+<div class="panel">
+<p id="phase"></p>
+<p id="role"></p>
+<p>💰 コイン: <span id="coin">0</span></p>
+<p>🏆 レート: <span id="rate">1000</span></p>
+</div>
+
+<div class="panel">
+<h3>プレイヤー</h3>
+<div id="players" class="flex"></div>
+</div>
+
+<div class="panel">
+<h3>行動</h3>
+<div id="action"></div>
+</div>
+
+<div class="panel">
+<h3>チャット</h3>
+<div id="chat" class="chat"></div>
+<input id="msg">
 <button onclick="send()">送信</button>
+</div>
+</div>
+
+<div>
+<div class="panel">
+<h3>🎰 ガチャ</h3>
+<button onclick="gacha()">回す (100コイン)</button>
+<p id="skin"></p>
+</div>
+
+<div class="panel">
+<button onclick="start()">ゲーム開始</button>
+</div>
+</div>
+
+</div>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, set } 
-from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { initializeApp } from 
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import {
+getDatabase,ref,set,push,onValue,get,update
+} from 
+"https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAoq3s75YB0zNAGJvPxR25L-iZFWjjDIAI",
-  authDomain: "werewolf-online-38465.firebaseapp.com",
-  databaseURL: "https://werewolf-online-38465-default-rtdb.firebaseio.com",
-  projectId: "werewolf-online-38465",
-  storageBucket: "werewolf-online-38465.appspot.com",
-  messagingSenderId: "388144035410",
-  appId: "1:388144035410:web:d8d4b573c1ffa5e7d9d18b"
+const firebaseConfig={
+apiKey:"AIzaSyAoq3s75YB0zNAGJvPxR25L-iZFWjjDIAI",
+databaseURL:"https://werewolf-online-38465-default-rtdb.firebaseio.com/",
+projectId:"werewolf-online-38465"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
 
-// ルームID
-const roomId =
-new URLSearchParams(location.search).get("room")
-|| Math.random().toString(36).slice(2,7);
+let room="",name="",myRole="";
+let coin=500;
+let rate=1000;
 
-document.getElementById("info").innerHTML =
-"ルームID: "+roomId;
+function join(){
+room=room.value;
+name=name.value;
 
-// 名前
-let name = localStorage.getItem("name");
-if(!name){
-  name = prompt("名前を入力");
-  localStorage.setItem("name", name);
+set(ref(db,"rooms/"+room+"/players/"+name),{
+alive:true,
+role:"",
+coin:coin,
+rate:rate
+});
+
+join.style.display="none";
+game.style.display="block";
+watch();
 }
 
-// 参加登録
-const playerRef =
-ref(db, "rooms/"+roomId+"/players/"+name);
+function watch(){
+onValue(ref(db,"rooms/"+room),snap=>{
+const d=snap.val();
+if(!d)return;
 
-set(playerRef, {
-  name,
-  join: Date.now()
+phase.innerText="フェーズ: "+d.phase;
+
+if(d.players){
+let html="",act="";
+for(let p in d.players){
+let pl=d.players[p];
+let cls=pl.alive?"player":"player dead";
+html+=`<div class="${cls}">${p}</div>`;
+
+if(p===name){
+myRole=pl.role;
+role.innerText="役職: "+myRole;
+coin=pl.coin||coin;
+rate=pl.rate||rate;
+document.getElementById("coin").innerText=coin;
+document.getElementById("rate").innerText=rate;
+}
+}
+players.innerHTML=html;
+}
 });
+}
 
-// 初期フェーズ作成（存在しない場合）
-import { get, child } from 
-"https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-const phaseRef = ref(db, "rooms/"+roomId+"/phase");
-
-get(phaseRef).then(snapshot=>{
-  if(!snapshot.exists()){
-    set(phaseRef,"lobby");
-  }
+function send(){
+push(ref(db,"rooms/"+room+"/chat"),{
+name:name,
+msg:msg.value
 });
+msg.value="";
+}
 
-import { onValue } from 
-"https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+function start(){
+get(ref(db,"rooms/"+room+"/players")).then(s=>{
+let names=Object.keys(s.val());
+let roles=["人狼","人狼","占い師"];
+while(roles.length<names.length)roles.push("市民");
+roles.sort(()=>Math.random()-0.5);
 
-onValue(phaseRef,(snap)=>{
-  const phase = snap.val();
-  document.getElementById("info").innerHTML =
-  "ルームID: "+roomId+" / 状態: "+phase;
+names.forEach((n,i)=>{
+update(ref(db,"rooms/"+room+"/players/"+n),{
+role:roles[i]
 });
-
-// チャット送信
-window.send = ()=>{
-  const t = document.getElementById("text");
-  if(!t.value) return;
-
-  push(
-    ref(db, "rooms/"+roomId+"/chat"),
-    {
-      name,
-      text:t.value,
-      time:Date.now()
-    }
-  );
-
-  t.value="";
-};
-
-// チャット受信
-onChildAdded(
-ref(db, "rooms/"+roomId+"/chat"),
-snap=>{
-  const d = snap.val();
-  const div = document.createElement("div");
-  div.className="msg";
-  div.innerHTML =
-  "<b>"+d.name+"</b>: "+d.text;
-  document.getElementById("chat")
-  .appendChild(div);
 });
+set(ref(db,"rooms/"+room+"/phase"),"day");
+});
+}
+
+function gacha(){
+if(coin<100){alert("コイン不足");return;}
+coin-=100;
+let skins=["🔥炎狼","❄氷狼","⚡雷狼","👑王狼"];
+let getSkin=skins[Math.floor(Math.random()*skins.length)];
+skin.innerText="獲得: "+getSkin;
+
+update(ref(db,"rooms/"+room+"/players/"+name),{
+coin:coin,
+skin:getSkin
+});
+}
+
+window.join=join;
+window.send=send;
+window.start=start;
+window.gacha=gacha;
+
 </script>
-
 </body>
 </html>
+
+function checkWin(){
+get(ref(db,"rooms/"+room+"/players")).then(s=>{
+let players=s.val();
+let wolves=0,citizens=0;
+
+for(let p in players){
+if(players[p].alive){
+if(players[p].role==="人狼") wolves++;
+else citizens++;
+}
+}
+
+if(wolves===0) endGame("市民");
+if(wolves>=citizens) endGame("人狼");
+});
+}
+
+function endGame(winner){
+alert("勝者: "+winner);
+
+get(ref(db,"rooms/"+room+"/players/"+name)).then(s=>{
+let me=s.val();
+let win = (me.role==="人狼" && winner==="人狼") ||
+          (me.role!=="人狼" && winner==="市民");
+
+let newRate = me.rate + (win?30:-20);
+let newCoin = me.coin + (win?200:50);
+
+update(ref(db,"rooms/"+room+"/players/"+name),{
+rate:newRate,
+coin:newCoin
+});
+});
+}
+
+<div class="panel">
+<h3>🏆 ランキング</h3>
+<div id="ranking"></div>
+</div>
