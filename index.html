@@ -284,3 +284,32 @@ coin:newCoin
 <h3>🏆 ランキング</h3>
 <div id="ranking"></div>
 </div>
+
+function showRanking(){
+get(ref(db,"rooms/"+room+"/players")).then(s=>{
+let arr=[];
+let data=s.val();
+for(let p in data){
+arr.push({name:p,rate:data[p].rate||1000});
+}
+arr.sort((a,b)=>b.rate-a.rate);
+
+let html="";
+arr.forEach((p,i)=>{
+html+=`${i+1}位 ${p.name} (${p.rate})<br>`;
+});
+ranking.innerHTML=html;
+});
+}
+
+{
+"name": "人狼人狼オンライン",
+"short_name": "人狼",
+"start_url": "./index.html",
+"display": "standalone",
+"background_color": "#0f0f0f",
+"theme_color": "#ff3d3d",
+"icons": []
+}
+
+<link rel="manifest" href="manifest.json">
