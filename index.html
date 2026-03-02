@@ -2,175 +2,241 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>WEREWOLF</title>
 
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000">
+
 <style>
-/* ===== 基本 ===== */
-body{
+html,body{
 margin:0;
 background:black;
-font-family:-apple-system;
 color:white;
-display:flex;
-justify-content:center;
+font-family:-apple-system;
+overflow:hidden;
 }
-
-/* ===== スマホ枠 ===== */
 #app{
-max-width:420px;
-width:100%;
-min-height:100vh;
-background:
-radial-gradient(circle at top,#300,#000),
-url("https://images.unsplash.com/photo-1506744038136-46273834b3fb");
-background-size:cover;
-background-blend-mode:overlay;
+max-width:430px;
+margin:auto;
+height:100vh;
+display:flex;
+flex-direction:column;
 }
 
-/* ===== タイトル ===== */
+/* ===== ホーム ===== */
+#home{
+flex:1;
+background:
+radial-gradient(circle at top,#300,#000);
+display:flex;
+flex-direction:column;
+justify-content:center;
+padding:20px;
+}
+
 .title{
 text-align:center;
-padding:50px 10px;
-font-size:32px;
+font-size:34px;
 letter-spacing:4px;
-color:#ff0000;
-text-shadow:
-0 0 10px red,
-0 0 30px red,
-0 0 50px red;
+color:#f00;
+text-shadow:0 0 20px red;
+margin-bottom:30px;
 animation:pulse 3s infinite;
 }
 
 @keyframes pulse{
-0%{opacity:0.7}
-50%{opacity:1}
-100%{opacity:0.7}
+50%{opacity:.5}
 }
 
-/* ===== カード ===== */
-.card{
-margin:15px;
-background:rgba(0,0,0,0.7);
-padding:20px;
-border-radius:18px;
-backdrop-filter:blur(10px);
-box-shadow:0 0 40px rgba(255,0,0,0.2);
-}
-
-/* ===== 入力 ===== */
-input{
-width:100%;
-padding:14px;
-margin:8px 0;
-background:#050505;
-border:none;
-border-radius:12px;
-color:white;
-font-size:16px;
-}
-
-/* ===== ボタン ===== */
-button{
+input,button{
 width:100%;
 padding:15px;
+border-radius:12px;
 border:none;
-border-radius:14px;
-margin-top:10px;
+margin:8px 0;
 font-size:16px;
+}
+
+input{background:#111;color:#fff;}
+
+button{
+background:linear-gradient(45deg,#f00,#400);
+color:#fff;
 font-weight:bold;
-background:linear-gradient(45deg,#ff0000,#400000);
-color:white;
-box-shadow:0 0 20px rgba(255,0,0,0.5);
 }
 
-/* ===== アイコン ===== */
-.iconGrid{
+/* ===== ゲーム ===== */
+#game{
+flex:1;
+display:none;
+flex-direction:column;
+background:black;
+position:relative;
+}
+
+#timer{
+text-align:center;
+padding:10px;
+background:#100;
+font-size:18px;
+}
+
+/* 夜 */
+.night{
+background:black;
+animation:dark 2s forwards;
+}
+@keyframes dark{
+from{background:#300;}
+to{background:black;}
+}
+
+/* 血 */
+#blood{
+position:absolute;
+top:0;left:0;
+width:100%;height:100%;
+background:url("https://i.imgur.com/8P5vC9B.png") center/cover;
+opacity:0;
+pointer-events:none;
+}
+
+/* 投票 */
+#players{
+flex:1;
 display:grid;
-grid-template-columns:repeat(4,1fr);
+grid-template-columns:repeat(3,1fr);
 gap:10px;
+padding:10px;
 }
 
-.icon{
-aspect-ratio:1;
-background:#000;
-border-radius:10px;
-display:flex;
-align-items:center;
-justify-content:center;
+.player{
+background:#111;
+padding:20px;
+border-radius:12px;
+text-align:center;
 font-size:22px;
-border:2px solid transparent;
-transition:0.2s;
 }
 
-.icon.active{
+.player.selected{
 border:2px solid red;
-box-shadow:0 0 20px red;
-transform:scale(1.1);
 }
 
+/* 心拍 */
+.heartbeat{
+animation:beat 1s infinite;
+}
+@keyframes beat{
+50%{transform:scale(1.05);}
+}
 </style>
 </head>
 
 <body>
 <div id="app">
 
+<!-- ホーム -->
+<div id="home">
 <div class="title">WEREWOLF</div>
-
-<div class="card">
 <input id="name" placeholder="名前">
-</div>
-
-<div class="card">
-<div>魂の姿を選べ</div>
-<div class="iconGrid" id="icons"></div>
-</div>
-
-<div class="card">
 <input id="room" placeholder="ルームID">
-<button onclick="join()">闇へ入る</button>
+<button onclick="start()">闇へ入る</button>
+</div>
+
+<!-- ゲーム -->
+<div id="game">
+<div id="timer">昼 240</div>
+<div id="players"></div>
+<div id="blood"></div>
 </div>
 
 </div>
+
+<audio id="heart" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
 
 <script>
+let phase="day";
+let time=240;
+let selected=null;
 
-const icons=["🐺","😈","💀","👁","🩸","🧛","🦇","🕷","🔥","🌙","⚰","🕯"];
-let selected=0;
+const timer=document.getElementById("timer");
+const players=document.getElementById("players");
+const blood=document.getElementById("blood");
+const heart=document.getElementById("heart");
 
-const grid=document.getElementById("icons");
+/* PWA */
+if("serviceWorker" in navigator){
+navigator.serviceWorker.register("sw.js");
+}
 
-icons.forEach((i,idx)=>{
-const d=document.createElement("div");
-d.className="icon";
-d.textContent=i;
-if(idx===0)d.classList.add("active");
+function start(){
+document.getElementById("home").style.display="none";
+document.getElementById("game").style.display="flex";
+createPlayers();
+runTimer();
+}
 
-d.onclick=()=>{
-document.querySelectorAll(".icon").forEach(e=>e.classList.remove("active"));
-d.classList.add("active");
-selected=idx;
+/* プレイヤー生成 */
+function createPlayers(){
+players.innerHTML="";
+for(let i=0;i<9;i++){
+let p=document.createElement("div");
+p.className="player";
+p.innerHTML="👤<br>Player"+(i+1);
+
+p.onclick=()=>{
+document.querySelectorAll(".player")
+.forEach(x=>x.classList.remove("selected"));
+p.classList.add("selected");
+selected=i;
 };
 
-grid.appendChild(d);
-});
-
-function join(){
-const name=document.getElementById("name").value;
-const room=document.getElementById("room").value;
-
-if(!name || !room){
-alert("入力してください");
-return;
+players.appendChild(p);
+}
 }
 
-localStorage.name=name;
-localStorage.icon=icons[selected];
-localStorage.room=room;
+/* タイマー */
+function runTimer(){
+setInterval(()=>{
+time--;
+timer.innerText=(phase==="day"?"昼 ":"投票 ")+time;
 
-alert("次はゲームへ…");
+if(time<=0){
+nextPhase();
+}
+},1000);
 }
 
+/* フェーズ */
+function nextPhase(){
+
+if(phase==="day"){
+phase="vote";
+time=60;
+}
+else if(phase==="vote"){
+attack();
+phase="night";
+time=40;
+}
+else{
+phase="day";
+time=240;
+}
+}
+
+/* 襲撃 */
+function attack(){
+blood.style.opacity=1;
+heart.play();
+navigator.vibrate([200,100,200]);
+
+setTimeout(()=>{
+blood.style.opacity=0;
+},2000);
+}
 </script>
 </body>
-</html
+</html>
